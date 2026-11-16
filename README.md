@@ -18,6 +18,9 @@ WordPress plugin that pairs a website with the [WP Easy Hub](https://github.com/
 `POST {hub}/api/connector/report` with a JSON body and headers `X-Hub-Connection`, `X-Hub-Timestamp` (seconds, within 5 minutes), `X-Hub-Nonce` (used once) and `X-Hub-Signature` = HMAC-SHA256 hex, with the secret, of
 `v1 \n METHOD \n PATH \n TIMESTAMP \n NONCE \n sha256(body)`. See `includes/Signature.php`; the Hub's copy is `app/Connector/Signature.php` and both assert the same test vector.
 
+## One-click login (0.2.0)
+The Hub can sign you in to this website's admin as an administrator chosen in the Hub. The Hub posts a signed token (`includes/LoginToken.php`: `base64url(JSON) . HMAC-SHA256`, secret from pairing, valid 60 seconds, works once) to `/?wpeasy_hub_login=1`; the plugin checks the signature, expiry, connection and nonce, re-checks the user is still an administrator, then signs them in and redirects to the dashboard. The token is only ever in a POST body. It skips any two-factor step on the site. It can be switched off in Settings > Hub Connector. The report lists the administrators (id, login, name) so the Hub can offer a choice.
+
 ## Updates (through the Hub)
 This repo is public (the plugin holds no secrets), but a website never talks to GitHub: it asks **its own Hub**, which reads the releases and passes the zip through.
 - The plugin asks `GET {hub}/api/connector/update-check` (signed like a report). If a newer release exists, WordPress shows its normal "update available" notice.
@@ -26,4 +29,4 @@ This repo is public (the plugin holds no secrets), but a website never talks to 
 - The first install on each site is a manual zip upload (a site must be paired before it can ask).
 
 ## Tests
-`php tests/signature-test.php` checks the signature against the Hub's. The Hub's own `ConnectorTest` covers the server side.
+`php tests/signature-test.php` and `php tests/login-token-test.php` check the signature and the login token against the Hub's. The Hub's own `ConnectorTest` covers the server side.

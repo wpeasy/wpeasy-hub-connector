@@ -15,6 +15,7 @@ class Settings {
 		add_action( 'admin_post_wpeasy_hub_pair', array( __CLASS__, 'handle_pair' ) );
 		add_action( 'admin_post_wpeasy_hub_report', array( __CLASS__, 'handle_report' ) );
 		add_action( 'admin_post_wpeasy_hub_forget', array( __CLASS__, 'handle_forget' ) );
+		add_action( 'admin_post_wpeasy_hub_options', array( __CLASS__, 'handle_options' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( dirname( __DIR__ ) . '/wpeasy-hub-connector.php' ), function ( $links ) {
 			array_unshift( $links, '<a href="' . esc_url( admin_url( 'options-general.php?page=' . self::PAGE ) ) . '">' . esc_html__( 'Settings', 'wpeasy-hub-connector' ) . '</a>' );
 			return $links;
@@ -57,6 +58,12 @@ class Settings {
 		self::back( $r['ok'], $r['message'] );
 	}
 
+	public static function handle_options() {
+		self::guard( 'wpeasy_hub_options' );
+		Store::set( array( 'allow_login' => ! empty( $_POST['allow_login'] ) ) );
+		self::back( true, __( 'Saved.', 'wpeasy-hub-connector' ) );
+	}
+
 	public static function handle_forget() {
 		self::guard( 'wpeasy_hub_forget' );
 		Store::forget();
@@ -85,6 +92,12 @@ class Settings {
 				echo '<p>' . esc_html__( 'Last report:', 'wpeasy-hub-connector' ) . ' ' . esc_html( $when ) . ' &mdash; ' . ( ! empty( $last['ok'] ) ? esc_html__( 'sent', 'wpeasy-hub-connector' ) : esc_html__( 'failed:', 'wpeasy-hub-connector' ) . ' ' . esc_html( $last['message'] ) ) . '</p>';
 			}
 			echo '<p>' . esc_html__( 'This website reports its WordPress and PHP versions and any updates waiting, once a day. Nothing else is sent.', 'wpeasy-hub-connector' ) . '</p>';
+			echo '<h2>' . esc_html__( 'One-click login', 'wpeasy-hub-connector' ) . '</h2>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="wpeasy_hub_options">';
+			wp_nonce_field( 'wpeasy_hub_options' );
+			echo '<p><label><input type="checkbox" name="allow_login" value="1"' . checked( (bool) Store::get( 'allow_login', true ), true, false ) . '> ' . esc_html__( 'Let the Hub log in to this website as one of its administrators (chosen in the Hub). Note: this signs in directly, so it skips any two-factor step this website has.', 'wpeasy-hub-connector' ) . '</label></p>';
+			submit_button( __( 'Save', 'wpeasy-hub-connector' ), 'secondary', 'submit', false );
+			echo '</form><hr>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin-right:8px">';
 			echo '<input type="hidden" name="action" value="wpeasy_hub_report">';
 			wp_nonce_field( 'wpeasy_hub_report' );

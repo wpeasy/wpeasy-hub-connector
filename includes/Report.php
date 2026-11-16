@@ -51,6 +51,12 @@ class Report {
 			}
 		}
 
+		// The administrators, so the Hub can be told which one a one-click login is as. Names only: no emails, no passwords.
+		$admins = array();
+		foreach ( get_users( array( 'role' => 'administrator', 'number' => 50, 'orderby' => 'ID', 'fields' => array( 'ID', 'user_login', 'display_name' ) ) ) as $u ) {
+			$admins[] = array( 'id' => (int) $u->ID, 'login' => $u->user_login, 'name' => $u->display_name );
+		}
+
 		$theme = wp_get_theme();
 
 		return array(
@@ -63,6 +69,8 @@ class Report {
 			'core_update'    => $core,
 			'plugins'        => $plugins,
 			'themes'         => $themes,
+			'admins'         => $admins,
+			'login_allowed'  => (bool) Store::get( 'allow_login', true ),
 		);
 	}
 }
