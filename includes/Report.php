@@ -1,0 +1,68 @@
+<?php
+namespace WPEasy\HubConnector;
+
+defined( 'ABSPATH' ) || exit;
+
+/** What this website tells the Hub: versions, the active theme, and which plugins, themes and WordPress itself have an update waiting. Nothing else leaves the site. */
+class Report {
+	public static function collect( $refresh = false ) {
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		require_once ABSPATH . 'wp-admin/includes/update.php';
+		require_once ABSPATH . 'wp-admin/includes/theme.php';
+
+		if ( $refresh ) {
+			// Ask WordPress to look for updates now (it keeps its own 12 hour cache otherwise).
+			wp_version_check( array(), true );
+			wp_update_plugins();
+			wp_update_themes();
+		}
+
+		$plugin_updates = get_site_transient( 'update_plugins' );
+		$theme_updates  = get_site_transient( 'update_themes' );
+		$active         = (array) get_option( 'active_plugins', array() );
+
+		$plugins = array();
+		foreach ( get_plugins() as $file => $data ) {
+			$new       = ( $plugin_updates && isset( $plugin_updates->response[ $file ]->new_version ) ) ? $plugin_updates->response[ $file ]->new_version : null;
+			$plugins[] = array(
+				'name'    => $data['Name'],
+				'version' => $data['Version'],
+				'active'  => in_array( $file, $active, true ) || ( is_multisite() && is_plugin_active_for_network( $file ) ),
+				'update'  => $new,
+			);
+		}
+
+		$themes = array();
+		foreach ( wp_get_themes() as $slug => $theme ) {
+			$new      = ( $theme_updates && isset( $theme_updates->response[ $slug ]['new_version'] ) ) ? $theme_updates->response[ $slug ]['new_version'] : null;
+			$themes[] = array(
+				'name'    => $theme->get( 'Name' ),
+				'version' => $theme->get( 'Version' ),
+				'active'  => get_stylesheet() === $slug,
+				'update'  => $new,
+			);
+		}
+
+		$core = null;
+		foreach ( (array) get_core_updates() as $u ) {
+			if ( isset( $u->response ) && 'upgrade' === $u->response && ! empty( $u->current ) ) {
+				$core = $u->current;
+				break;
+			}
+		}
+
+		$theme = wp_get_theme();
+
+		return array(
+			'wp_version'     => get_bloginfo( 'version' ),
+			'php_version'    => PHP_VERSION,
+			'plugin_version' => VERSION,
+			'site_url'       => home_url(),
+			'multisite'      => is_multisite(),
+			'theme'          => array( 'name' => $theme->get( 'Name' ), 'version' => $theme->get( 'Version' ) ),
+			'core_update'    => $core,
+			'plugins'        => $plugins,
+			'themes'         => $themes,
+		);
+	}
+}

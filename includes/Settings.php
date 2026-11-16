@@ -1,0 +1,104 @@
+<?php
+namespace WPEasy\HubConnector;
+
+defined( 'ABSPATH' ) || exit;
+
+/** Settings > Hub Connector: pair with the Hub, send a report now, or forget the pairing. Administrators only; every action is nonce-checked. */
+class Settings {
+	const PAGE = 'wpeasy-hub-connector';
+
+	public static function init() {
+		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
+		add_action( 'admin_post_wpeasy_hub_pair', array( __CLASS__, 'handle_pair' ) );
+		add_action( 'admin_post_wpeasy_hub_report', array( __CLASS__, 'handle_report' ) );
+		add_action( 'admin_post_wpeasy_hub_forget', array( __CLASS__, 'handle_forget' ) );
+		add_filter( 'plugin_action_links_' . plugin_basename( dirname( __DIR__ ) . '/wpeasy-hub-connector.php' ), function ( $links ) {
+			array_unshift( $links, '<a href="' . esc_url( admin_url( 'options-general.php?page=' . self::PAGE ) ) . '">' . esc_html__( 'Settings', 'wpeasy-hub-connector' ) . '</a>' );
+			return $links;
+		} );
+	}
+
+	public static function menu() {
+		add_options_page( __( 'Hub Connector', 'wpeasy-hub-connector' ), __( 'Hub Connector', 'wpeasy-hub-connector' ), 'manage_options', self::PAGE, array( __CLASS__, 'render' ) );
+	}
+
+	private static function guard( $action ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to do that.', 'wpeasy-hub-connector' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( $action );
+	}
+
+	private static function back( $ok, $message ) {
+		set_transient( 'wpeasy_hub_notice_' . get_current_user_id(), array( 'ok' => $ok, 'message' => $message ), 60 );
+		wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE ) );
+		exit;
+	}
+
+	public static function handle_pair() {
+		self::guard( 'wpeasy_hub_pair' );
+		$hub  = isset( $_POST['hub_url'] ) ? sanitize_text_field( wp_unslash( $_POST['hub_url'] ) ) : '';
+		$code = isset( $_POST['code'] ) ? sanitize_text_field( wp_unslash( $_POST['code'] ) ) : '';
+		$r    = Client::pair( $hub, $code );
+		self::back( $r['ok'], $r['message'] );
+	}
+
+	public static function handle_report() {
+		self::guard( 'wpeasy_hub_report' );
+		$r = Client::send_report( true );
+		self::back( $r['ok'], $r['message'] );
+	}
+
+	public static function handle_forget() {
+		self::guard( 'wpeasy_hub_forget' );
+		Store::forget();
+		self::back( true, __( 'Disconnected from this side. Also press Disconnect on the website in the Hub so it stops expecting reports.', 'wpeasy-hub-connector' ) );
+	}
+
+	public static function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$notice = get_transient( 'wpeasy_hub_notice_' . get_current_user_id() );
+		if ( $notice ) {
+			delete_transient( 'wpeasy_hub_notice_' . get_current_user_id() );
+		}
+		$connected = Store::connected();
+		$last      = Store::get( 'last_report', array() );
+		echo '<div class="wrap"><h1>' . esc_html__( 'WP Easy Hub Connector', 'wpeasy-hub-connector' ) . '</h1>';
+		if ( $notice ) {
+			printf( '<div class="notice %s is-dismissible"><p>%s</p></div>', $notice['ok'] ? 'notice-success' : 'notice-error', esc_html( $notice['message'] ) );
+		}
+
+		if ( $connected ) {
+			echo '<p><strong>' . esc_html__( 'Connected', 'wpeasy-hub-connector' ) . '</strong> ' . esc_html__( 'to', 'wpeasy-hub-connector' ) . ' <code>' . esc_html( Store::get( 'hub_url' ) ) . '</code></p>';
+			if ( ! empty( $last['time'] ) ) {
+				$when = sprintf( /* translators: %s: how long ago */ __( '%s ago', 'wpeasy-hub-connector' ), human_time_diff( (int) $last['time'] ) );
+				echo '<p>' . esc_html__( 'Last report:', 'wpeasy-hub-connector' ) . ' ' . esc_html( $when ) . ' &mdash; ' . ( ! empty( $last['ok'] ) ? esc_html__( 'sent', 'wpeasy-hub-connector' ) : esc_html__( 'failed:', 'wpeasy-hub-connector' ) . ' ' . esc_html( $last['message'] ) ) . '</p>';
+			}
+			echo '<p>' . esc_html__( 'This website reports its WordPress and PHP versions and any updates waiting, once a day. Nothing else is sent.', 'wpeasy-hub-connector' ) . '</p>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin-right:8px">';
+			echo '<input type="hidden" name="action" value="wpeasy_hub_report">';
+			wp_nonce_field( 'wpeasy_hub_report' );
+			submit_button( __( 'Send a report now', 'wpeasy-hub-connector' ), 'secondary', 'submit', false );
+			echo '</form>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block" onsubmit="return confirm(\'' . esc_js( __( 'Disconnect this website from the Hub?', 'wpeasy-hub-connector' ) ) . '\');">';
+			echo '<input type="hidden" name="action" value="wpeasy_hub_forget">';
+			wp_nonce_field( 'wpeasy_hub_forget' );
+			submit_button( __( 'Disconnect', 'wpeasy-hub-connector' ), 'delete', 'submit', false );
+			echo '</form>';
+		} else {
+			echo '<p>' . esc_html__( 'In the Hub, open this website, choose Connect the plugin, and copy the pairing code it shows. Then enter the Hub address and the code here.', 'wpeasy-hub-connector' ) . '</p>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<input type="hidden" name="action" value="wpeasy_hub_pair">';
+			wp_nonce_field( 'wpeasy_hub_pair' );
+			echo '<table class="form-table" role="presentation"><tr><th scope="row"><label for="wpeasy-hub-url">' . esc_html__( 'Hub address', 'wpeasy-hub-connector' ) . '</label></th>';
+			echo '<td><input id="wpeasy-hub-url" name="hub_url" type="url" class="regular-text" placeholder="https://hub.example.com" value="' . esc_attr( Store::get( 'hub_url' ) ) . '" required></td></tr>';
+			echo '<tr><th scope="row"><label for="wpeasy-hub-code">' . esc_html__( 'Pairing code', 'wpeasy-hub-connector' ) . '</label></th>';
+			echo '<td><input id="wpeasy-hub-code" name="code" type="text" class="regular-text code" placeholder="ABCD-EFGH-JKLM" autocomplete="off" required></td></tr></table>';
+			submit_button( __( 'Connect', 'wpeasy-hub-connector' ) );
+			echo '</form>';
+		}
+		echo '</div>';
+	}
+}
