@@ -72,6 +72,9 @@ class Client {
 		) );
 
 		Store::set( array( 'last_report' => array( 'time' => time(), 'ok' => $res['ok'], 'message' => $res['ok'] ? '' : $res['message'] ) ) );
+		if ( $res['ok'] ) {
+			Store::set( array( 'reported_version' => VERSION ) ); // so an update is noticed: the next page load after it sends a report straight away
+		}
 		return $res['ok'] ? array( 'ok' => true, 'message' => __( 'The report was sent.', 'wpeasy-hub-connector' ) ) : $res;
 	}
 
