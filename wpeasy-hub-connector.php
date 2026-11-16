@@ -24,10 +24,12 @@ require_once __DIR__ . '/includes/Signature.php';
 require_once __DIR__ . '/includes/Store.php';
 require_once __DIR__ . '/includes/Client.php';
 require_once __DIR__ . '/includes/Report.php';
+require_once __DIR__ . '/includes/Updater.php';
 require_once __DIR__ . '/includes/Settings.php';
 
 add_action( CRON, array( Client::class, 'send_report' ) );
 Settings::init();
+Updater::init();
 
 register_activation_hook( __FILE__, function () {
 	if ( ! wp_next_scheduled( CRON ) ) {

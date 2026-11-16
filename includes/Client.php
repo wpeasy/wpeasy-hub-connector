@@ -75,6 +75,56 @@ class Client {
 		return $res['ok'] ? array( 'ok' => true, 'message' => __( 'The report was sent.', 'wpeasy-hub-connector' ) ) : $res;
 	}
 
+	/** The headers that prove a request came from this paired website (see Signature). */
+	private static function signed_headers( $method, $path, $body ) {
+		$ts    = time();
+		$nonce = wp_generate_password( 24, false, false );
+		return array(
+			'X-Hub-Connection' => Store::get( 'connection' ),
+			'X-Hub-Timestamp'  => (string) $ts,
+			'X-Hub-Nonce'      => $nonce,
+			'X-Hub-Signature'  => Signature::make( Store::get( 'secret' ), $method, $path, $ts, $nonce, $body ),
+		);
+	}
+
+	/** A signed GET to the Hub (the update check). @return array{ok: bool, message: string, data?: array} */
+	public static function signed_get( $path ) {
+		if ( ! Store::connected() ) {
+			return array( 'ok' => false, 'message' => '' );
+		}
+		$res = wp_remote_get( Store::get( 'hub_url' ) . $path, array(
+			'timeout'     => 15,
+			'redirection' => 0,
+			'headers'     => array_merge( array( 'Accept' => 'application/json', 'User-Agent' => 'WPEasyHubConnector/' . VERSION ), self::signed_headers( 'GET', $path, '' ) ),
+		) );
+		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+			return array( 'ok' => false, 'message' => '' );
+		}
+		$data = json_decode( wp_remote_retrieve_body( $res ), true );
+		return array( 'ok' => is_array( $data ), 'message' => '', 'data' => is_array( $data ) ? $data : array() );
+	}
+
+	/** Downloads the plugin zip from the Hub (signed) into a temporary file. @return string|\WP_Error the file path */
+	public static function download_package( $path ) {
+		$tmp = wp_tempnam( 'wpeasy-hub-connector.zip' );
+		if ( ! $tmp ) {
+			return new \WP_Error( 'wpeasy_hub_tmp', __( 'Could not make a temporary file for the update.', 'wpeasy-hub-connector' ) );
+		}
+		$res = wp_remote_get( Store::get( 'hub_url' ) . $path, array(
+			'timeout'     => 120,
+			'redirection' => 0,
+			'stream'      => true,
+			'filename'    => $tmp,
+			'headers'     => array_merge( array( 'User-Agent' => 'WPEasyHubConnector/' . VERSION ), self::signed_headers( 'GET', $path, '' ) ),
+		) );
+		$ok = ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) && is_readable( $tmp ) && 'PK' === file_get_contents( $tmp, false, null, 0, 2 );
+		if ( ! $ok ) {
+			wp_delete_file( $tmp );
+			return new \WP_Error( 'wpeasy_hub_download', __( 'The Hub could not provide the update right now. Try again later.', 'wpeasy-hub-connector' ) );
+		}
+		return $tmp;
+	}
+
 	/** @return array{ok: bool, message: string, data?: array} */
 	private static function post( $url, $payload, array $headers = array() ) {
 		$body = is_string( $payload ) ? $payload : wp_json_encode( $payload );

@@ -11,5 +11,8 @@ WordPress plugin, a separate repo from the Hub app (`../wpeasy-hub-app`, `app/Co
 - Plain, non-technical wording in everything a person sees. Brand: WP Easy.
 - Version: edit the `Version:` header, the `VERSION` constant and `readme.txt` Stable tag together; `bin/build-zip.sh` builds the zip.
 
+## Updates
+Through the Hub, never directly from GitHub: the Hub holds the read-only GitHub token (`CONNECTOR_GITHUB_TOKEN` in its `.env`); this plugin only ever talks to the Hub (`includes/Updater.php`, signed `GET`s). **Never put a GitHub token in this plugin or its zip.** Release with `bin/release.sh` (version header, `VERSION` constant and readme Stable tag must agree; the asset must be named `wpeasy-hub-connector-<version>.zip` with the plugin folder `wpeasy-hub-connector/` inside, which `bin/build-zip.sh` does).
+
 ## Not built yet
 One-time login from the Hub, running updates from the Hub, a report on demand from the Hub (needs an endpoint on the site), per-plugin details beyond name and version, translations (strings are already wrapped).
