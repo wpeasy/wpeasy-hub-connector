@@ -20,7 +20,7 @@ Every report is signed with a secret agreed at pairing, so the Hub can tell it r
 == Changelog ==
 
 = 0.1.1 =
-* A clearer message when a firewall in front of the Hub refuses this website, and the Hub address stays filled in after a failed attempt.
+* A clearer message when a firewall in front of the Hub refuses this website, the Hub address starts as WP Easy's own Hub (https://hub.wpeasy.au) and stays filled in after a failed attempt.
 
 = 0.1.0 =
 * First version: pairing and a daily status report.

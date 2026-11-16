@@ -7,6 +7,9 @@ defined( 'ABSPATH' ) || exit;
 class Settings {
 	const PAGE = 'wpeasy-hub-connector';
 
+	/** The address the box starts with. WP Easy's own Hub; another agency's Hub is set once with add_filter( 'wpeasy_hub_connector_default_hub_url', ... ) or by typing it. */
+	const DEFAULT_HUB_URL = 'https://hub.wpeasy.au';
+
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_post_wpeasy_hub_pair', array( __CLASS__, 'handle_pair' ) );
@@ -98,7 +101,7 @@ class Settings {
 			echo '<input type="hidden" name="action" value="wpeasy_hub_pair">';
 			wp_nonce_field( 'wpeasy_hub_pair' );
 			echo '<table class="form-table" role="presentation"><tr><th scope="row"><label for="wpeasy-hub-url">' . esc_html__( 'Hub address', 'wpeasy-hub-connector' ) . '</label></th>';
-			echo '<td><input id="wpeasy-hub-url" name="hub_url" type="url" class="regular-text" placeholder="https://hub.example.com" value="' . esc_attr( Store::get( 'hub_url' ) ) . '" required></td></tr>';
+			echo '<td><input id="wpeasy-hub-url" name="hub_url" type="url" class="regular-text" placeholder="https://hub.example.com" value="' . esc_attr( Store::get( 'hub_url', apply_filters( 'wpeasy_hub_connector_default_hub_url', self::DEFAULT_HUB_URL ) ) ) . '" required></td></tr>';
 			echo '<tr><th scope="row"><label for="wpeasy-hub-code">' . esc_html__( 'Pairing code', 'wpeasy-hub-connector' ) . '</label></th>';
 			echo '<td><input id="wpeasy-hub-code" name="code" type="text" class="regular-text code" placeholder="ABCD-EFGH-JKLM" autocomplete="off" required></td></tr></table>';
 			submit_button( __( 'Connect', 'wpeasy-hub-connector' ) );
