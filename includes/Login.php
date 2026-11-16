@@ -49,17 +49,26 @@ class Login {
 		if ( ! $p ) {
 			return null;
 		}
-		$key = 'wpeasy_hub_nonce_' . md5( $p['n'] );
-		if ( get_transient( $key ) ) {
-			return null; // a login works once
+		if ( ! self::claim_nonce( $p['n'] ) ) {
+			return null; // a login works once, even if two requests arrive at the same instant
 		}
-		set_transient( $key, 1, 10 * MINUTE_IN_SECONDS );
 
 		$user = get_userdata( (int) $p['u'] );
 		if ( ! $user || ! in_array( 'administrator', (array) $user->roles, true ) || ! user_can( $user, 'manage_options' ) ) {
 			return null;
 		}
 		return $user;
+	}
+
+	/**
+	 * Marks a token as used, atomically: a single INSERT IGNORE on the options table (option_name is unique), so of two requests carrying the same token at the
+	 * same moment exactly one gets true. (A get-then-set check would let both through.) Old marks are removed as they expire.
+	 */
+	public static function claim_nonce( $nonce ) {
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value < %d", $wpdb->esc_like( 'wpeasy_hub_used_' ) . '%', time() - 600 ) );
+		$added = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')", 'wpeasy_hub_used_' . md5( $nonce ), (string) time() ) );
+		return 1 === (int) $added;
 	}
 
 	private static function refuse( $message ) {

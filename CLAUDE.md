@@ -12,7 +12,7 @@ WordPress plugin, a separate repo from the Hub app (`../wpeasy-hub-app`, `app/Co
 - Version: edit the `Version:` header, the `VERSION` constant and `readme.txt` Stable tag together; `bin/build-zip.sh` builds the zip.
 
 ## One-click login
-`includes/Login.php` + `includes/LoginToken.php`. Only a POST with a genuine, current, unused token signs anyone in; the user must still be an administrator; there is an off switch (`allow_login`, default on); failures are rate-limited by IP. Never accept the token in a GET address, never log it, never add another way to sign in. The report lists administrators by id, login and display name only (no emails).
+`includes/Login.php` + `includes/LoginToken.php`. Only a POST with a genuine, current, unused token signs anyone in; the user must still be an administrator; there is an off switch (`allow_login`, default on); failures are rate-limited by IP. "Works once" is an atomic `INSERT IGNORE` (`Login::claim_nonce`), never get-then-set (two simultaneous requests would both pass). Never accept the token in a GET address, never log it, never add another way to sign in. The report lists administrators by id, login and display name only (no emails).
 
 ## Updates
 Through the Hub, never directly from GitHub: this repo is public and the plugin holds no secrets, and it only ever talks to its own Hub (`includes/Updater.php`, signed `GET`s). **Never put a token or any secret in this plugin or its zip** (the repo is public). Release with `bin/release.sh` (version header, `VERSION` constant and readme Stable tag must agree; the asset must be named `wpeasy-hub-connector-<version>.zip` with the plugin folder `wpeasy-hub-connector/` inside, which `bin/build-zip.sh` does).

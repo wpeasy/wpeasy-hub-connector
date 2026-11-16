@@ -29,4 +29,4 @@ This repo is public (the plugin holds no secrets), but a website never talks to 
 - The first install on each site is a manual zip upload (a site must be paired before it can ask).
 
 ## Tests
-`php tests/signature-test.php` and `php tests/login-token-test.php` check the signature and the login token against the Hub's. The Hub's own `ConnectorTest` covers the server side.
+`php tests/signature-test.php` and `php tests/login-token-test.php` check the signature and the login token against the Hub's; `php tests/nonce-test.php` checks a login token works only once. See `SECURITY.md` for reporting a problem. The Hub's own `ConnectorTest` covers the server side.

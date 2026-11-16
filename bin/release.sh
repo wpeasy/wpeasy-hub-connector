@@ -10,7 +10,7 @@ STABLE=$(grep -m1 "^Stable tag:" readme.txt | sed 's/.*: *//')
 [ -z "$(git status --porcelain)" ] || { echo "Commit your changes first."; exit 1; }
 git rev-parse "v$VERSION" >/dev/null 2>&1 && { echo "v$VERSION already exists. Bump the version first."; exit 1; }
 for f in wpeasy-hub-connector.php uninstall.php includes/*.php; do php -l "$f" >/dev/null; done
-php tests/signature-test.php
+php tests/signature-test.php; php tests/login-token-test.php; php tests/nonce-test.php
 ZIP=$(./bin/build-zip.sh)
 git tag "v$VERSION" && git push origin main "v$VERSION"
 gh release create "v$VERSION" "$ZIP" --title "v$VERSION" --notes "${1:-Release $VERSION}"
