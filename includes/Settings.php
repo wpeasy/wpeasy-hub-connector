@@ -39,6 +39,11 @@ class Settings {
 		self::guard( 'wpeasy_hub_pair' );
 		$hub  = isset( $_POST['hub_url'] ) ? sanitize_text_field( wp_unslash( $_POST['hub_url'] ) ) : '';
 		$code = isset( $_POST['code'] ) ? sanitize_text_field( wp_unslash( $_POST['code'] ) ) : '';
+		// Keep the Hub address in the box if the attempt fails, so only the code needs typing again.
+		$clean = Client::clean_hub_url( $hub );
+		if ( '' !== $clean ) {
+			Store::set( array( 'hub_url' => $clean ) );
+		}
 		$r    = Client::pair( $hub, $code );
 		self::back( $r['ok'], $r['message'] );
 	}

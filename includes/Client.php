@@ -143,6 +143,10 @@ class Client {
 			return array( 'ok' => true, 'message' => '', 'data' => is_array( $data ) ? $data : array() );
 		}
 		if ( 403 === $code ) {
+			// The Hub's own answer is JSON with a message. Anything else (a plain web server page) means something in front of the Hub, such as a firewall, turned this website away.
+			if ( ! is_array( $data ) || empty( $data['message'] ) ) {
+				return array( 'ok' => false, 'message' => __( 'Something in front of the Hub (such as a firewall) refused this website before the Hub could read the request. Ask whoever runs the Hub to allow requests to /api/connector/ from this website.', 'wpeasy-hub-connector' ) );
+			}
 			return array( 'ok' => false, 'message' => __( 'The Hub did not accept that. Check the code is current and was made for this website.', 'wpeasy-hub-connector' ) );
 		}
 		if ( 429 === $code ) {
