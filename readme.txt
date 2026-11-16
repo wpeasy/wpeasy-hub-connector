@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.3.1 =
+* The Hub can now update this connector too (backed up first, checked afterwards, put back if the website breaks, like everything else).
 
 = 0.3.0 =
 * The Hub can update this website's plugins, themes and WordPress itself (signed request, one item at a time). A plugin or theme is backed up first, the website is checked afterwards, and the old version is put back automatically if the website is broken. Nothing runs unless the Hub asks.

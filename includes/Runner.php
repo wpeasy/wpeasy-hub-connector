@@ -65,9 +65,6 @@ class Runner {
 		if ( ! isset( $plugins[ $file ] ) ) {
 			return self::fail( __( 'That plugin is not on this website any more.', 'wpeasy-hub-connector' ) );
 		}
-		if ( plugin_basename( dirname( __DIR__ ) . '/wpeasy-hub-connector.php' ) === $file ) {
-			return self::fail( __( 'The connector updates itself through WordPress, not through this.', 'wpeasy-hub-connector' ) );
-		}
 		wp_update_plugins();
 		$offers = get_site_transient( 'update_plugins' );
 		if ( empty( $offers->response[ $file ] ) ) {
