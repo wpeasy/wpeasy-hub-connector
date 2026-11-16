@@ -18,6 +18,9 @@ WordPress plugin that pairs a website with the [WP Easy Hub](https://github.com/
 `POST {hub}/api/connector/report` with a JSON body and headers `X-Hub-Connection`, `X-Hub-Timestamp` (seconds, within 5 minutes), `X-Hub-Nonce` (used once) and `X-Hub-Signature` = HMAC-SHA256 hex, with the secret, of
 `v1 \n METHOD \n PATH \n TIMESTAMP \n NONCE \n sha256(body)`. See `includes/Signature.php`; the Hub's copy is `app/Connector/Signature.php` and both assert the same test vector.
 
+## Refresh on request (0.2.2)
+The Hub can ask the site to send its report now (the **Refresh now** button on the website's card), so a person need not wait for the daily report. The Hub posts a signed request to `/?wpeasy_hub_action=1` (`includes/Remote.php`: connection id, timestamp within 5 minutes, one-time nonce, HMAC-SHA256 over `v1 METHOD /wpeasy-hub-action TIMESTAMP NONCE sha256(body)`); the plugin then pushes its normal report. Only the actions in `Remote::ACTIONS` exist (`report`), and the site hands back nothing but `ok` and its plugin version.
+
 ## One-click login (0.2.0)
 The Hub can sign you in to this website's admin as an administrator chosen in the Hub. The Hub posts a signed token (`includes/LoginToken.php`: `base64url(JSON) . HMAC-SHA256`, secret from pairing, valid 60 seconds, works once) to `/?wpeasy_hub_login=1`; the plugin checks the signature, expiry, connection and nonce, re-checks the user is still an administrator, then signs them in and redirects to the dashboard. The token is only ever in a POST body. It skips any two-factor step on the site. It can be switched off in Settings > Hub Connector. The report lists the administrators (id, login, name) so the Hub can offer a choice.
 

@@ -1,0 +1,55 @@
+<?php
+namespace WPEasy\HubConnector;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Lets the Hub ask this website to do one thing now: send its report (so a person is not left waiting for the daily one). The Hub posts a signed request to
+ * /?wpeasy_hub_action=1; it carries nothing the site hands back except "ok". Checked like every request: paired connection, fresh timestamp, a one-time nonce
+ * and a signature made with the secret from pairing. Only the actions listed in ACTIONS exist.
+ */
+class Remote {
+	/** What the signature is made over in place of an address (the request itself goes to the home page). */
+	const PATH    = '/wpeasy-hub-action';
+	const ACTIONS = array( 'report' );
+
+	public static function init() {
+		add_action( 'init', array( __CLASS__, 'maybe_handle' ), 1 );
+	}
+
+	public static function maybe_handle() {
+		if ( ! isset( $_GET['wpeasy_hub_action'] ) || 'POST' !== ( isset( $_SERVER['REQUEST_METHOD'] ) ? $_SERVER['REQUEST_METHOD'] : '' ) ) {
+			return;
+		}
+		nocache_headers();
+		$body = (string) file_get_contents( 'php://input' );
+		if ( ! self::verified( $body ) ) {
+			wp_send_json( array( 'ok' => false ), 403 );
+		}
+		$data   = json_decode( $body, true );
+		$action = is_array( $data ) && isset( $data['action'] ) ? $data['action'] : '';
+		if ( ! in_array( $action, self::ACTIONS, true ) ) {
+			wp_send_json( array( 'ok' => false ), 400 );
+		}
+		$r = Client::send_report( true ); // asks WordPress for fresh update information, then sends the report to the Hub as usual
+		wp_send_json( array( 'ok' => (bool) $r['ok'], 'plugin_version' => VERSION ) );
+	}
+
+	private static function verified( $body ) {
+		if ( ! Store::connected() || strlen( $body ) > 2000 ) {
+			return false;
+		}
+		$conn  = isset( $_SERVER['HTTP_X_HUB_CONNECTION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_HUB_CONNECTION'] ) ) : '';
+		$ts    = isset( $_SERVER['HTTP_X_HUB_TIMESTAMP'] ) ? (int) $_SERVER['HTTP_X_HUB_TIMESTAMP'] : 0;
+		$nonce = isset( $_SERVER['HTTP_X_HUB_NONCE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_HUB_NONCE'] ) ) : '';
+		$sig   = isset( $_SERVER['HTTP_X_HUB_SIGNATURE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_HUB_SIGNATURE'] ) ) : '';
+
+		if ( ! hash_equals( (string) Store::get( 'connection' ), $conn ) || '' === $nonce || strlen( $nonce ) > 64 || abs( time() - $ts ) > 300 ) {
+			return false;
+		}
+		if ( ! hash_equals( Signature::make( Store::get( 'secret' ), 'POST', self::PATH, $ts, $nonce, $body ), strtolower( $sig ) ) ) {
+			return false;
+		}
+		return Login::claim_nonce( 'remote-' . $nonce ); // a request works once
+	}
+}

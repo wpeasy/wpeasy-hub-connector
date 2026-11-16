@@ -3,7 +3,7 @@
 WordPress plugin, a separate repo from the Hub app (`../wpeasy-hub-app`, `app/Connector`, `ConnectorApiController`). Slug and folder `wpeasy-hub-connector`, namespace `WPEasy\HubConnector`, option `wpeasy_hub_connector` (never autoloaded), text domain `wpeasy-hub-connector`.
 
 ## Rules
-- **Push model only:** the plugin reports to the Hub; the Hub never calls the site. That means no endpoint is exposed on the WordPress site. Keep it so unless login or update actions need one (then design it with signed, short-lived requests and ask first).
+- **Push by default, narrow signed calls where needed:** the plugin reports to the Hub; the Hub does not poll or pull from the site. The site has **no open API**: the only inbound requests are POSTs that must carry a valid signature, fresh timestamp and one-time nonce (or a login token), and only for a fixed list of actions (`Remote::ACTIONS`: `report`; plus the one-click login). Reason: every inbound door is attack surface, and a signed, single-action door is small and reviewable. A new Hub-to-site action needs: a signature check, a nonce claim (`Login::claim_nonce`), an entry in `Remote::ACTIONS`, a test, and a note here. Never add an unsigned or read-everything endpoint.
 - **Never send more than the report** (versions, theme, plugin and theme names and versions, update versions, site URL). No users, content, settings or secrets.
 - **Signatures:** `includes/Signature.php` must match the Hub's `app/Connector/Signature.php`; both assert the vector in `tests/signature-test.php` / `ConnectorTest`. Changing the format means a new version tag (`v2`) on both sides, never a silent change.
 - Hub address: https only, except localhost, `.test` and `.localhost` for development. Requests never follow redirects.
