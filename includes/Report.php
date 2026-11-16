@@ -25,6 +25,7 @@ class Report {
 		foreach ( get_plugins() as $file => $data ) {
 			$new       = ( $plugin_updates && isset( $plugin_updates->response[ $file ]->new_version ) ) ? $plugin_updates->response[ $file ]->new_version : null;
 			$plugins[] = array(
+				'id'      => $file,
 				'name'    => $data['Name'],
 				'version' => $data['Version'],
 				'active'  => in_array( $file, $active, true ) || ( is_multisite() && is_plugin_active_for_network( $file ) ),
@@ -36,6 +37,7 @@ class Report {
 		foreach ( wp_get_themes() as $slug => $theme ) {
 			$new      = ( $theme_updates && isset( $theme_updates->response[ $slug ]['new_version'] ) ) ? $theme_updates->response[ $slug ]['new_version'] : null;
 			$themes[] = array(
+				'id'      => $slug,
 				'name'    => $theme->get( 'Name' ),
 				'version' => $theme->get( 'Version' ),
 				'active'  => get_stylesheet() === $slug,
