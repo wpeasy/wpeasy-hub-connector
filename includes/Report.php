@@ -30,6 +30,7 @@ class Report {
 				'version' => $data['Version'],
 				'active'  => in_array( $file, $active, true ) || ( is_multisite() && is_plugin_active_for_network( $file ) ),
 				'update'  => $new,
+				'no_package' => null !== $new && Runner::no_download( isset( $plugin_updates->response[ $file ]->package ) ? $plugin_updates->response[ $file ]->package : '' ),
 			);
 		}
 
@@ -42,6 +43,7 @@ class Report {
 				'version' => $theme->get( 'Version' ),
 				'active'  => get_stylesheet() === $slug,
 				'update'  => $new,
+				'no_package' => null !== $new && Runner::no_download( isset( $theme_updates->response[ $slug ]['package'] ) ? $theme_updates->response[ $slug ]['package'] : '' ),
 			);
 		}
 

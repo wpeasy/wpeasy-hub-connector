@@ -56,6 +56,15 @@ class Runner {
 		return null;
 	}
 
+	/** True when WordPress has no real download address for an update: a premium plugin or theme whose licence or subscription has lapsed (or was never connected) offers a placeholder instead. */
+	public static function no_download( $package ) {
+		return ! is_string( $package ) || ! preg_match( '#^https?://#i', $package );
+	}
+
+	private static function no_download_message() {
+		return __( 'The update cannot be downloaded: this is a premium plugin or theme whose licence or subscription is not active (WordPress has no download address for it). Renew or connect it with its seller, then try again. Nothing was changed.', 'wpeasy-hub-connector' );
+	}
+
 	private static function skin() {
 		return new \Automatic_Upgrader_Skin();
 	}
@@ -69,6 +78,9 @@ class Runner {
 		$offers = get_site_transient( 'update_plugins' );
 		if ( empty( $offers->response[ $file ] ) ) {
 			return self::fail( __( 'No update is offered for this plugin any more (it may have been updated already).', 'wpeasy-hub-connector' ) );
+		}
+		if ( self::no_download( isset( $offers->response[ $file ]->package ) ? $offers->response[ $file ]->package : '' ) ) {
+			return self::fail( self::no_download_message() ); // before anything is touched: no backup, nothing to put back
 		}
 		$from   = $plugins[ $file ]['Version'];
 		$active = is_plugin_active( $file );
@@ -113,6 +125,9 @@ class Runner {
 		$offers = get_site_transient( 'update_themes' );
 		if ( empty( $offers->response[ $slug ] ) ) {
 			return self::fail( __( 'No update is offered for this theme any more (it may have been updated already).', 'wpeasy-hub-connector' ) );
+		}
+		if ( self::no_download( isset( $offers->response[ $slug ]['package'] ) ? $offers->response[ $slug ]['package'] : '' ) ) {
+			return self::fail( self::no_download_message() );
 		}
 		$from   = (string) $theme->get( 'Version' );
 		$source = get_theme_root( $slug ) . '/' . $slug;
