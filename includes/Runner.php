@@ -42,6 +42,17 @@ class Runner {
 		return array_merge( array( 'ok' => false, 'status' => 'failed', 'message' => $message ), $extra );
 	}
 
+	/** True when WordPress failed before it touched any files (the download or the package): the old version is still in place, so there is nothing to put back. */
+	private static function untouched( $result, $skin ) {
+		$codes = array( 'download_failed', 'http_request_failed', 'no_package', 'incompatible_archive', 'fs_unavailable', 'fs_no_plugins_dir', 'fs_no_themes_dir', 'fs_no_content_dir', 'fs_no_root_dir' );
+		foreach ( array( $result, isset( $skin->result ) ? $skin->result : null ) as $e ) {
+			if ( is_wp_error( $e ) && in_array( $e->get_error_code(), $codes, true ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Why an upgrade did not work, in words, or null when it did. (WordPress returns true, an array, false or a WP_Error; the skin keeps its own error in ->result.) */
 	private static function why_not( $result, $skin ) {
 		if ( is_wp_error( $result ) ) {
@@ -112,6 +123,9 @@ class Runner {
 			wp_clean_plugins_cache( true );
 			$why = self::why_not( $result, $skin );
 			if ( null !== $why ) {
+				if ( self::untouched( $result, $skin ) ) {
+					return self::fail( $why . ' ' . __( 'Nothing was changed on the website.', 'wpeasy-hub-connector' ), array( 'from' => $from ) );
+				}
 				return self::put_back( 'plugin', $backup, $source, $file, $active, $net, $why, $from );
 			}
 			if ( $active && ! is_plugin_active( $file ) ) {
@@ -160,6 +174,9 @@ class Runner {
 			wp_clean_themes_cache( true );
 			$why = self::why_not( $result, $skin );
 			if ( null !== $why ) {
+				if ( self::untouched( $result, $skin ) ) {
+					return self::fail( $why . ' ' . __( 'Nothing was changed on the website.', 'wpeasy-hub-connector' ), array( 'from' => $from ) );
+				}
 				return self::put_back( 'theme', $backup, $source, null, false, false, $why, $from );
 			}
 			$health = Health::check();
