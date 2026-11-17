@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.3.4
+Stable tag: 0.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.3.5 =
+* WordPress can keep offering a version that is already installed until it next looks for updates. The report no longer calls that an update, and asking to update it is answered "already on this version" instead of failing and putting the same version back.
 
 = 0.3.4 =
 * After an update the website check now asks up to three times, a few seconds apart, before calling the website broken. Updating clears caches, so the first page can be built from scratch and, on a heavy website, run out of memory once and then work.

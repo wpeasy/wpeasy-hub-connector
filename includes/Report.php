@@ -24,6 +24,10 @@ class Report {
 		$plugins = array();
 		foreach ( get_plugins() as $file => $data ) {
 			$new       = ( $plugin_updates && isset( $plugin_updates->response[ $file ]->new_version ) ) ? $plugin_updates->response[ $file ]->new_version : null;
+			// WordPress keeps an offer in its update list until it next looks: right after an update it can still offer the version that is now installed. That is not an update.
+			if ( null !== $new && version_compare( (string) $new, (string) $data['Version'], '<=' ) ) {
+				$new = null;
+			}
 			$plugins[] = array(
 				'id'      => $file,
 				'name'    => $data['Name'],
@@ -37,6 +41,9 @@ class Report {
 		$themes = array();
 		foreach ( wp_get_themes() as $slug => $theme ) {
 			$new      = ( $theme_updates && isset( $theme_updates->response[ $slug ]['new_version'] ) ) ? $theme_updates->response[ $slug ]['new_version'] : null;
+			if ( null !== $new && version_compare( (string) $new, (string) $theme->get( 'Version' ), '<=' ) ) {
+				$new = null; // an offer for the version already installed (see plugins above)
+			}
 			$themes[] = array(
 				'id'      => $slug,
 				'name'    => $theme->get( 'Name' ),
