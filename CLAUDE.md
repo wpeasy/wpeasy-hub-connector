@@ -20,5 +20,8 @@ WordPress plugin, a separate repo from the Hub app (`../wpeasy-hub-app`, `app/Co
 ## Updates
 Through the Hub, never directly from GitHub: this repo is public and the plugin holds no secrets, and it only ever talks to its own Hub (`includes/Updater.php`, signed `GET`s). **Never put a token or any secret in this plugin or its zip** (the repo is public). Release with `bin/release.sh` (version header, `VERSION` constant and readme Stable tag must agree; the asset must be named `wpeasy-hub-connector-<version>.zip` with the plugin folder `wpeasy-hub-connector/` inside, which `bin/build-zip.sh` does).
 
+## WP-CLI
+`includes/Cli.php`: `wp wpeasy-hub connect --code=<code> [--hub=<url>]` and `wp wpeasy-hub status`, loaded only when `WP_CLI` is defined. It uses the same `Client::pair` as the settings page. Command line only: whoever can run it already controls the website, and it adds no way in from the web.
+
 ## Not built yet
 One-time login from the Hub, running updates from the Hub, a report on demand from the Hub (needs an endpoint on the site), per-plugin details beyond name and version, translations (strings are already wrapped).

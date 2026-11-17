@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.3.2 =
+* WP-CLI: `wp wpeasy-hub connect --code=...` pairs the website without logging in, and `wp wpeasy-hub status` shows the connection. Command line only; it adds no way in from the web.
 
 = 0.3.1 =
 * The Hub can now update this connector too (backed up first, checked afterwards, put back if the website breaks, like everything else).
