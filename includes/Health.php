@@ -8,12 +8,25 @@ class Health {
 	/** @return array{ok: bool, message: string} */
 	public static function check() {
 		foreach ( array( home_url( '/' ), site_url( 'wp-login.php' ) ) as $url ) {
-			$r = self::fetch( $url );
+			$r = self::fetch_patiently( $url );
 			if ( ! $r['ok'] ) {
 				return $r;
 			}
 		}
 		return array( 'ok' => true, 'message' => '' );
+	}
+
+	/**
+	 * An update clears caches, so the first page the check asks for is built from scratch (the check skips the page cache on purpose) and a heavy page can run out of
+	 * memory once, then work. Ask again a couple of times, a few seconds apart, before calling it broken: a website that is really broken fails every time.
+	 */
+	private static function fetch_patiently( $url ) {
+		$r = self::fetch( $url );
+		for ( $try = 0; $try < 2 && ! $r['ok']; $try++ ) {
+			sleep( 4 );
+			$r = self::fetch( $url );
+		}
+		return $r;
 	}
 
 	private static function fetch( $url ) {
