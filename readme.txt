@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.4.1 =
+* The parent of the child theme in use is now reported as in use (and as a parent), so the Hub no longer offers to remove it.
 
 = 0.4.0 =
 * The Hub can remove a plugin or theme that is not in use (one at a time, when a person asks): a backup of its files is made first, anything in use is refused, and so is the Hub Connector itself. Deleting a plugin runs its own uninstall routine, which some plugins use to delete their data.

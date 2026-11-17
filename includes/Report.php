@@ -48,7 +48,8 @@ class Report {
 				'id'      => $slug,
 				'name'    => $theme->get( 'Name' ),
 				'version' => $theme->get( 'Version' ),
-				'active'  => get_stylesheet() === $slug,
+				'active'  => get_stylesheet() === $slug || get_template() === $slug, // the parent of a child theme in use is in use too
+				'parent'  => get_template() === $slug && get_stylesheet() !== $slug,
 				'update'  => $new,
 				'no_package' => null !== $new && Runner::no_download( isset( $theme_updates->response[ $slug ]['package'] ) ? $theme_updates->response[ $slug ]['package'] : '' ),
 			);
