@@ -65,6 +65,11 @@ class Runner {
 		return __( 'The update cannot be downloaded: this is a premium plugin or theme whose licence or subscription is not active (WordPress has no download address for it). Renew or connect it with its seller, then try again. Nothing was changed.', 'wpeasy-hub-connector' );
 	}
 
+	/** Nothing to do because it is already there: not an error. */
+	private static function already( $version ) {
+		return array( 'ok' => true, 'status' => 'updated', 'message' => __( 'Already updated.', 'wpeasy-hub-connector' ), 'from' => $version, 'to' => $version, 'backup' => false );
+	}
+
 	private static function skin() {
 		return new \Automatic_Upgrader_Skin();
 	}
@@ -77,11 +82,14 @@ class Runner {
 		wp_update_plugins();
 		$offers = get_site_transient( 'update_plugins' );
 		if ( empty( $offers->response[ $file ] ) ) {
-			return self::fail( __( 'No update is offered for this plugin any more (it may have been updated already).', 'wpeasy-hub-connector' ) );
+			if ( '' !== (string) $wanted && version_compare( (string) $plugins[ $file ]['Version'], (string) $wanted, '>=' ) ) {
+				return self::already( $plugins[ $file ]['Version'] ); // updated by someone (or something) else since the Hub looked
+			}
+			return self::fail( __( 'No update is offered for this plugin any more.', 'wpeasy-hub-connector' ) );
 		}
 		if ( isset( $offers->response[ $file ]->new_version ) && version_compare( (string) $offers->response[ $file ]->new_version, (string) $plugins[ $file ]['Version'], '<=' ) ) {
 			// Already on this version (WordPress was still listing the offer): nothing to do, and nothing to put back.
-			return array( 'ok' => true, 'status' => 'updated', 'message' => __( 'Already on this version.', 'wpeasy-hub-connector' ), 'from' => $plugins[ $file ]['Version'], 'to' => $plugins[ $file ]['Version'], 'backup' => false );
+			return self::already( $plugins[ $file ]['Version'] );
 		}
 		if ( self::no_download( isset( $offers->response[ $file ]->package ) ? $offers->response[ $file ]->package : '' ) ) {
 			return self::fail( self::no_download_message() ); // before anything is touched: no backup, nothing to put back
@@ -128,10 +136,13 @@ class Runner {
 		wp_update_themes();
 		$offers = get_site_transient( 'update_themes' );
 		if ( empty( $offers->response[ $slug ] ) ) {
-			return self::fail( __( 'No update is offered for this theme any more (it may have been updated already).', 'wpeasy-hub-connector' ) );
+			if ( '' !== (string) $wanted && version_compare( (string) $theme->get( 'Version' ), (string) $wanted, '>=' ) ) {
+				return self::already( (string) $theme->get( 'Version' ) );
+			}
+			return self::fail( __( 'No update is offered for this theme any more.', 'wpeasy-hub-connector' ) );
 		}
 		if ( isset( $offers->response[ $slug ]['new_version'] ) && version_compare( (string) $offers->response[ $slug ]['new_version'], (string) $theme->get( 'Version' ), '<=' ) ) {
-			return array( 'ok' => true, 'status' => 'updated', 'message' => __( 'Already on this version.', 'wpeasy-hub-connector' ), 'from' => (string) $theme->get( 'Version' ), 'to' => (string) $theme->get( 'Version' ), 'backup' => false );
+			return self::already( (string) $theme->get( 'Version' ) );
 		}
 		if ( self::no_download( isset( $offers->response[ $slug ]['package'] ) ? $offers->response[ $slug ]['package'] : '' ) ) {
 			return self::fail( self::no_download_message() );
@@ -174,7 +185,10 @@ class Runner {
 			}
 		}
 		if ( ! $offer ) {
-			return self::fail( __( 'No WordPress update is offered any more (it may have been updated already).', 'wpeasy-hub-connector' ) );
+			if ( '' !== (string) $wanted && version_compare( (string) $from, (string) $wanted, '>=' ) ) {
+				return self::already( $from );
+			}
+			return self::fail( __( 'No WordPress update is offered any more.', 'wpeasy-hub-connector' ) );
 		}
 		$result = ( new \Core_Upgrader( self::skin() ) )->upgrade( $offer );
 		if ( is_wp_error( $result ) ) {
