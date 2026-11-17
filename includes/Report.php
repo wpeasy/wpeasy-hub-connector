@@ -81,7 +81,8 @@ class Report {
 			'core_update'    => $core,
 			'plugins'        => $plugins,
 			'themes'         => $themes,
-			'admins'         => array_values( $admins ), // keyed by ID above: a user whose role is stored twice in the database comes back twice
+			'admins'         => array_values( $admins ),
+			'backups'        => Backup::stats(), // keyed by ID above: a user whose role is stored twice in the database comes back twice
 			'login_allowed'  => (bool) Store::get( 'allow_login', true ),
 		);
 	}

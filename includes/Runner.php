@@ -213,7 +213,7 @@ class Runner {
 			wp_clean_themes_cache( true );
 		}
 		if ( is_wp_error( $restored ) ) {
-			return self::fail( $reason . ' ' . sprintf( /* translators: %s: why */ __( 'Putting the old version back failed (%s): check the website now. The backup is in wp-content/uploads/wpeasy-hub-backups.', 'wpeasy-hub-connector' ), $restored->get_error_message() ), array( 'from' => $from, 'backup' => true ) );
+			return self::fail( $reason . ' ' . sprintf( /* translators: 1: why, 2: backup path */ __( 'Putting the old version back failed (%1$s): check the website now. The backup is the zip file %2$s.', 'wpeasy-hub-connector' ), $restored->get_error_message(), $backup ), array( 'from' => $from, 'backup' => true ) );
 		}
 		$health = Health::check();
 		if ( ! $health['ok'] ) {

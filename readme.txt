@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.4.2
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,11 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.5.0 =
+* Backups made before an update or removal are now one zip file each, never loose copies of the old plugin. They are kept outside the website's public folder when the host allows it (otherwise in a closed folder with a hidden name), only the newest two per plugin or theme are kept, and nothing is kept longer than 14 days. A daily job clears what is left.
+* On the first run, the loose backup folders older versions left in the uploads folder are zipped (the recent ones) or deleted, and the old folder is removed.
+* The report tells the Hub how many backups are kept and where.
 
 = 0.4.2 =
 * Each administrator is reported once, even when the website's database stores their role twice.
