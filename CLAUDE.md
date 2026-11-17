@@ -23,5 +23,8 @@ Through the Hub, never directly from GitHub: this repo is public and the plugin 
 ## WP-CLI
 `includes/Cli.php`: `wp wpeasy-hub connect --code=<code> [--hub=<url>]` and `wp wpeasy-hub status`, loaded only when `WP_CLI` is defined. It uses the same `Client::pair` as the settings page. Command line only: whoever can run it already controls the website, and it adds no way in from the web.
 
+## Removing things for the Hub
+`includes/Remover.php`, Remote action `remove` (kind plugin|theme, id): only something NOT in use, never the connector or the parent of the active theme, backup first (an empty backup stops it), WordPress's own `delete_plugins` / `delete_theme`. The answer is JSON only (`ob_start`); the report is sent afterwards. Deleting runs the plugin's own uninstall routine, which may delete its data: the backup is of files only.
+
 ## Not built yet
 One-time login from the Hub, running updates from the Hub, a report on demand from the Hub (needs an endpoint on the site), per-plugin details beyond name and version, translations (strings are already wrapped).

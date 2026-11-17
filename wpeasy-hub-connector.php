@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       WP Easy Hub Connector
  * Description:       Pairs this website with your WP Easy Hub. Reports the WordPress and PHP versions and any updates waiting, once a day.
- * Version:           0.3.6
+ * Version:           0.4.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            WP Easy
@@ -16,7 +16,7 @@ namespace WPEasy\HubConnector;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION = '0.3.6';
+const VERSION = '0.4.0';
 const OPTION  = 'wpeasy_hub_connector';
 const CRON    = 'wpeasy_hub_connector_report';
 
@@ -29,6 +29,7 @@ require_once __DIR__ . '/includes/Login.php';
 require_once __DIR__ . '/includes/Backup.php';
 require_once __DIR__ . '/includes/Health.php';
 require_once __DIR__ . '/includes/Runner.php';
+require_once __DIR__ . '/includes/Remover.php';
 require_once __DIR__ . '/includes/Remote.php';
 require_once __DIR__ . '/includes/Updater.php';
 require_once __DIR__ . '/includes/Settings.php';

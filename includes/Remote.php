@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 class Remote {
 	/** What the signature is made over in place of an address (the request itself goes to the home page). */
 	const PATH    = '/wpeasy-hub-action';
-	const ACTIONS = array( 'report', 'update' );
+	const ACTIONS = array( 'report', 'update', 'remove' );
 
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'maybe_handle' ), 1 );
@@ -47,6 +47,19 @@ class Remote {
 			if ( '' !== $noise ) {
 				$res['output'] = substr( $noise, 0, 300 ); // kept for diagnosis only
 			}
+			wp_send_json( $res + array( 'plugin_version' => VERSION ) );
+		}
+		if ( 'remove' === $action ) {
+			$kind = isset( $data['kind'] ) ? (string) $data['kind'] : '';
+			$id   = isset( $data['id'] ) ? sanitize_text_field( (string) $data['id'] ) : '';
+			ob_start(); // a plugin's uninstall routine may print: the answer is JSON only
+			try {
+				$res = Remover::run( $kind, $id );
+			} catch ( \Throwable $e ) {
+				$res = array( 'ok' => false, 'status' => 'failed', 'message' => sprintf( /* translators: %s: the error */ __( 'The removal hit an unexpected error: %s', 'wpeasy-hub-connector' ), $e->getMessage() ) );
+			}
+			Client::send_report( true );
+			ob_end_clean();
 			wp_send_json( $res + array( 'plugin_version' => VERSION ) );
 		}
 		$r = Client::send_report( true ); // asks WordPress for fresh update information, then sends the report to the Hub as usual
