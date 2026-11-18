@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 class Remote {
 	/** What the signature is made over in place of an address (the request itself goes to the home page). */
 	const PATH    = '/wpeasy-hub-action';
-	const ACTIONS = array( 'report', 'update', 'remove' );
+	const ACTIONS = array( 'report', 'update', 'remove', 'link' );
 
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'maybe_handle' ), 1 );
@@ -59,6 +59,21 @@ class Remote {
 				$res = array( 'ok' => false, 'status' => 'failed', 'message' => sprintf( /* translators: %s: the error */ __( 'The removal hit an unexpected error: %s', 'wpeasy-hub-connector' ), $e->getMessage() ) );
 			}
 			Client::send_report( true );
+			ob_end_clean();
+			wp_send_json( $res + array( 'plugin_version' => VERSION ) );
+		}
+		if ( 'link' === $action ) {
+			$pages = array();
+			foreach ( ( isset( $data['pages'] ) && is_array( $data['pages'] ) ? array_slice( $data['pages'], 0, 8 ) : array() ) as $page ) {
+				$pages[] = esc_url_raw( (string) $page );
+			}
+			ob_start();
+			try {
+				$res = LinkEditor::run( esc_url_raw( isset( $data['url'] ) ? (string) $data['url'] : '' ), isset( $data['op'] ) ? (string) $data['op'] : '', isset( $data['to'] ) ? (string) $data['to'] : '', $pages );
+			} catch ( \Throwable $e ) {
+				kses_init();
+				$res = array( 'ok' => false, 'status' => 'failed', 'message' => sprintf( /* translators: %s: the error */ __( 'The change hit an unexpected error: %s', 'wpeasy-hub-connector' ), $e->getMessage() ) );
+			}
 			ob_end_clean();
 			wp_send_json( $res + array( 'plugin_version' => VERSION ) );
 		}
