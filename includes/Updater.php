@@ -33,7 +33,7 @@ class Updater {
 		}
 		$r    = Client::signed_get( self::CHECK_PATH );
 		$info = ( $r['ok'] && ! empty( $r['data']['version'] ) ) ? $r['data'] : array( 'version' => null );
-		set_site_transient( self::CACHE, $info, $info['version'] ? 6 * HOUR_IN_SECONDS : HOUR_IN_SECONDS );
+		set_site_transient( self::CACHE, $info, $info['version'] ? HOUR_IN_SECONDS : 10 * MINUTE_IN_SECONDS );
 		return $info['version'] ? $info : null;
 	}
 

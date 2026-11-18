@@ -11,7 +11,8 @@ class Report {
 		require_once ABSPATH . 'wp-admin/includes/theme.php';
 
 		if ( $refresh ) {
-			// Ask WordPress to look for updates now (it keeps its own 12 hour cache otherwise).
+			// Ask WordPress to look for updates now (it keeps its own 12 hour cache otherwise), and forget what the Hub said last time about this plugin's own newest version.
+			delete_site_transient( Updater::CACHE );
 			wp_version_check( array(), true );
 			wp_update_plugins();
 			wp_update_themes();
