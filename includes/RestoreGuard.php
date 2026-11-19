@@ -32,7 +32,7 @@ class RestoreGuard {
 			}
 		}
 		$last = strtolower( end( $parts ) );
-		if ( '.maintenance' === $last || '.hubtmp' === substr( $last, -7 ) ) {
+		if ( '.maintenance' === $last || '.hubtmp' === substr( $last, -7 ) || 0 === strpos( $last, '.wpeasy-hub-restore-' ) ) {
 			return null;
 		}
 		$lower = strtolower( $rel );

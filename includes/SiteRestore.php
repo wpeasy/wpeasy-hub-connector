@@ -17,7 +17,7 @@ class SiteRestore {
 	public static function handle( $action, array $data ) {
 		$core = ! empty( $data['core'] );
 		if ( 'restore_begin' !== $action && 'restore_finish' !== $action ) {
-			RestoreState::maintenance( true ); // renew it: WordPress drops it after ten minutes without a request
+			RestoreState::renew(); // keeps the restore (and the notice to visitors) going: it ends by itself after ten minutes without a request
 		}
 		switch ( $action ) {
 			case 'restore_begin':

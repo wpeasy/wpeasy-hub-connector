@@ -127,7 +127,8 @@ class Remote {
 	}
 
 	private static function verified( $body ) {
-		if ( ! Store::connected() || strlen( $body ) > 2000000 ) { // a backup request can name many files and a restore request carries a piece of a file; the signature is checked before anything is done
+		$pair = RestoreState::pairing();
+		if ( '' === $pair['connection'] || '' === $pair['secret'] || strlen( $body ) > 2000000 ) { // a backup request can name many files and a restore request carries a piece of a file; the signature is checked before anything is done
 			return false;
 		}
 		$conn  = isset( $_SERVER['HTTP_X_HUB_CONNECTION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_HUB_CONNECTION'] ) ) : '';
@@ -135,10 +136,10 @@ class Remote {
 		$nonce = isset( $_SERVER['HTTP_X_HUB_NONCE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_HUB_NONCE'] ) ) : '';
 		$sig   = isset( $_SERVER['HTTP_X_HUB_SIGNATURE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_HUB_SIGNATURE'] ) ) : '';
 
-		if ( ! hash_equals( (string) Store::get( 'connection' ), $conn ) || '' === $nonce || strlen( $nonce ) > 64 || abs( time() - $ts ) > 300 ) {
+		if ( ! hash_equals( $pair['connection'], $conn ) || '' === $nonce || strlen( $nonce ) > 64 || abs( time() - $ts ) > 300 ) {
 			return false;
 		}
-		if ( ! hash_equals( Signature::make( Store::get( 'secret' ), 'POST', self::PATH, $ts, $nonce, $body ), strtolower( $sig ) ) ) {
+		if ( ! hash_equals( Signature::make( $pair['secret'], 'POST', self::PATH, $ts, $nonce, $body ), strtolower( $sig ) ) ) {
 			return false;
 		}
 		return Login::claim_nonce( 'remote-' . $nonce ); // a request works once
