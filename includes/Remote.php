@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 class Remote {
 	/** What the signature is made over in place of an address (the request itself goes to the home page). */
 	const PATH    = '/wpeasy-hub-action';
-	const ACTIONS = array( 'report', 'update', 'remove', 'link', 'backup_info', 'backup_dirs', 'backup_files', 'backup_tables', 'backup_rows' );
+	const ACTIONS = array( 'report', 'update', 'remove', 'link', 'backup_info', 'backup_dirs', 'backup_files', 'backup_tables', 'backup_rows', 'restore_begin', 'restore_dirs', 'restore_files', 'restore_sql', 'restore_core', 'restore_finish' );
 
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'maybe_handle' ), 1 );
@@ -55,6 +55,24 @@ class Remote {
 				header( 'Content-Length: ' . strlen( $res ) );
 				echo $res; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- raw file data for the Hub, framed and read by length
 				exit;
+			}
+			wp_send_json( $res + array( 'plugin_version' => VERSION ) );
+		}
+		if ( in_array( $action, SiteRestore::ACTIONS, true ) ) {
+			if ( ! SiteRestore::allowed() ) {
+				wp_send_json( array( 'ok' => false, 'code' => 'disabled', 'message' => __( 'Restoring is switched off on this website (Settings > Hub Connector).', 'wpeasy-hub-connector' ) ) );
+			}
+			@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- some hosts forbid it
+			ignore_user_abort( true );
+			wp_raise_memory_limit( 'admin' );
+			ob_start();
+			try {
+				$res = SiteRestore::handle( $action, $data );
+			} catch ( \Throwable $e ) {
+				$res = array( 'ok' => false, 'code' => 'error', 'message' => sprintf( /* translators: %s: the error */ __( 'The restore step hit an unexpected error: %s', 'wpeasy-hub-connector' ), substr( $e->getMessage(), 0, 200 ) ) );
+			}
+			while ( ob_get_level() > 0 ) {
+				ob_end_clean();
 			}
 			wp_send_json( $res + array( 'plugin_version' => VERSION ) );
 		}
@@ -109,7 +127,7 @@ class Remote {
 	}
 
 	private static function verified( $body ) {
-		if ( ! Store::connected() || strlen( $body ) > 64000 ) { // a backup request can name many files; the signature is checked before anything is done
+		if ( ! Store::connected() || strlen( $body ) > 2000000 ) { // a backup request can name many files and a restore request carries a piece of a file; the signature is checked before anything is done
 			return false;
 		}
 		$conn  = isset( $_SERVER['HTTP_X_HUB_CONNECTION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_HUB_CONNECTION'] ) ) : '';

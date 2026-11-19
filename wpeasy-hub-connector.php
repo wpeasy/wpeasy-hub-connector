@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       WP Easy Hub Connector
  * Description:       Pairs this website with your WP Easy Hub. Reports the WordPress and PHP versions and any updates waiting, once a day.
- * Version:           0.7.2
+ * Version:           0.8.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            WP Easy
@@ -16,7 +16,7 @@ namespace WPEasy\HubConnector;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION = '0.7.2';
+const VERSION = '0.8.0';
 const OPTION  = 'wpeasy_hub_connector';
 const CRON    = 'wpeasy_hub_connector_report';
 const BACKUPS = 'wpeasy_hub_connector_backups';
@@ -39,6 +39,15 @@ require_once __DIR__ . '/includes/BackupDb.php';
 require_once __DIR__ . '/includes/WpBackupDb.php';
 require_once __DIR__ . '/includes/BackupDumper.php';
 require_once __DIR__ . '/includes/SiteBackup.php';
+require_once __DIR__ . '/includes/SqlSplitter.php';
+require_once __DIR__ . '/includes/SqlRunner.php';
+require_once __DIR__ . '/includes/WpSqlRunner.php';
+require_once __DIR__ . '/includes/RestoreGuard.php';
+require_once __DIR__ . '/includes/RestoreFiles.php';
+require_once __DIR__ . '/includes/RestoreDb.php';
+require_once __DIR__ . '/includes/RestoreState.php';
+require_once __DIR__ . '/includes/RestoreCore.php';
+require_once __DIR__ . '/includes/SiteRestore.php';
 require_once __DIR__ . '/includes/Remote.php';
 require_once __DIR__ . '/includes/Updater.php';
 require_once __DIR__ . '/includes/Settings.php';

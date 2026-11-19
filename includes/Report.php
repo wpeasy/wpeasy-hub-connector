@@ -89,6 +89,7 @@ class Report {
 			'backups'        => Backup::stats(), // keyed by ID above: a user whose role is stored twice in the database comes back twice
 			'login_allowed'  => (bool) Store::get( 'allow_login', true ),
 			'backup_allowed' => (bool) Store::get( 'allow_backup', true ),
+			'restore_allowed' => (bool) Store::get( 'allow_restore', true ),
 		);
 	}
 }
