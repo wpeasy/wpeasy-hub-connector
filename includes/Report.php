@@ -13,6 +13,9 @@ class Report {
 		if ( $refresh ) {
 			// Ask WordPress to look for updates now (it keeps its own 12 hour cache otherwise), and forget what the Hub said last time about this plugin's own newest version.
 			delete_site_transient( Updater::CACHE );
+			// WordPress only looks again when its saved answers are gone or 12 hours old, so remove them first; otherwise a new release of anything stays invisible.
+			delete_site_transient( 'update_plugins' );
+			delete_site_transient( 'update_themes' );
 			wp_version_check( array(), true );
 			wp_update_plugins();
 			wp_update_themes();
