@@ -27,7 +27,7 @@ class SiteRestore {
 			case 'restore_files':
 				return RestoreFiles::apply( isset( $data['items'] ) && is_array( $data['items'] ) ? array_slice( $data['items'], 0, 500 ) : array(), $core );
 			case 'restore_sql':
-				return RestoreDb::run( new WpSqlRunner(), isset( $data['table'] ) ? $data['table'] : '', isset( $data['sql'] ) ? $data['sql'] : '' );
+				return RestoreDb::run( new WpSqlRunner(), isset( $data['table'] ) ? $data['table'] : '', isset( $data['sql'] ) ? $data['sql'] : '', ! isset( $data['first'] ) || ! empty( $data['first'] ), ! isset( $data['last'] ) || ! empty( $data['last'] ) );
 			case 'restore_core':
 				return RestoreCore::run( isset( $data['version'] ) ? $data['version'] : '' );
 			case 'restore_finish':

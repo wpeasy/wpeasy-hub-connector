@@ -64,6 +64,7 @@ if ( 1 !== count( $p['statements'] ) || '' === $p['rest'] ) { $fail( 'an unfinis
 // A table restore runs only what a table backup contains (against a real MySQL/MariaDB if reachable)
 class PdoRunner implements SqlRunner {
 	public $pdo; public $ran = array();
+	public function exists( $table ) { return (bool) $this->pdo->query( "SHOW TABLES LIKE '" . $table . "'" )->fetchAll(); }
 	public function exec( $sql ) { try { $this->pdo->exec( $sql ); $this->ran[] = $sql; return true; } catch ( Exception $e ) { return $e->getMessage(); } }
 }
 try {
@@ -79,7 +80,8 @@ $pdo->exec( 'CREATE TABLE hbr_other (id int)' ); $pdo->exec( 'INSERT INTO hbr_ot
 $pdo->exec( 'CREATE TABLE hbr_t (id int primary key, v varchar(50))' ); $pdo->exec( "INSERT INTO hbr_t VALUES (99, 'changed since the backup')" );
 $dump = "-- WP Easy Hub backup of `hbr_t`\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\nSET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\nDROP TABLE IF EXISTS `hbr_t`;\nCREATE TABLE `hbr_t` (\n  `id` int(11) NOT NULL,\n  `v` varchar(50) DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\nINSERT INTO `hbr_t` (`id`,`v`) VALUES (1,'one; with semicolon'),(2,'it\\'s two');\n";
 $r = RestoreDb::run( $run, 'hbr_t', $dump );
-if ( ! $r['ok'] || 6 !== $r['executed'] ) { $fail( 'table restore failed: ' . json_encode( $r ) ); }
+if ( ! $r['ok'] || 6 !== $r['executed'] || empty( $r['swapped'] ) ) { $fail( 'table restore failed: ' . json_encode( $r ) ); }
+if ( $pdo->query( "SHOW TABLES LIKE 'hbr_t\\_\\_hub%'" )->fetchAll() ) { $fail( 'a temporary table was left behind' ); }
 $rows = $pdo->query( 'SELECT id, v FROM hbr_t ORDER BY id' )->fetchAll( PDO::FETCH_KEY_PAIR );
 if ( array( 1 => 'one; with semicolon', 2 => "it's two" ) !== $rows ) { $fail( 'restored rows wrong: ' . json_encode( $rows ) ); }
 // anything else is refused before any statement runs
@@ -89,6 +91,25 @@ foreach ( array( "DROP TABLE IF EXISTS `hbr_other`;", "DROP TABLE `hbr_t`;", "IN
 }
 if ( 1 !== (int) $pdo->query( 'SELECT COUNT(*) FROM hbr_other' )->fetchColumn() || 2 !== (int) $pdo->query( 'SELECT COUNT(*) FROM hbr_t' )->fetchColumn() ) { $fail( 'a refused block changed data' ); }
 if ( RestoreDb::run( $run, 'hbr_t; DROP TABLE x', $dump )['ok'] ) { $fail( 'a bad table name was accepted' ); }
+
+// a restore that fails part-way leaves the real table exactly as it was, and no temporary table
+$before = $pdo->query( 'SELECT id, v FROM hbr_t ORDER BY id' )->fetchAll( PDO::FETCH_KEY_PAIR );
+$broken = str_replace( "(2,'it\\'s two');", "(2,'x'),(1,'duplicate key breaks the insert');", $dump );
+$r = RestoreDb::run( $run, 'hbr_t', $broken );
+if ( $r['ok'] ) { $fail( 'a broken restore reported success' ); }
+if ( $pdo->query( 'SELECT id, v FROM hbr_t ORDER BY id' )->fetchAll( PDO::FETCH_KEY_PAIR ) !== $before ) { $fail( 'a failed restore changed the real table' ); }
+if ( $pdo->query( "SHOW TABLES LIKE 'hbr_t\\_\\_hub%'" )->fetchAll() ) { $fail( 'a failed restore left a temporary table' ); }
+
+// a table sent in several blocks is swapped in only after the last one
+$blocks = explode( "INSERT INTO", $dump );
+$r1 = RestoreDb::run( $run, 'hbr_t', $blocks[0], true, false );
+if ( ! $r1['ok'] || $r1['swapped'] || $pdo->query( 'SELECT id, v FROM hbr_t ORDER BY id' )->fetchAll( PDO::FETCH_KEY_PAIR ) !== $before ) { $fail( 'the first block changed the real table' ); }
+$r2 = RestoreDb::run( $run, 'hbr_t', 'INSERT INTO' . $blocks[1], false, true );
+if ( ! $r2['ok'] || empty( $r2['swapped'] ) || 2 !== (int) $pdo->query( 'SELECT COUNT(*) FROM hbr_t' )->fetchColumn() ) { $fail( 'the last block did not swap the table in: ' . json_encode( $r2 ) ); }
+
+// a table that no longer exists is simply created
+$pdo->exec( 'DROP TABLE hbr_t' );
+if ( ! RestoreDb::run( $run, 'hbr_t', $dump )['ok'] || 2 !== (int) $pdo->query( 'SELECT COUNT(*) FROM hbr_t' )->fetchColumn() ) { $fail( 'a dropped table was not recreated' ); }
 $pdo->exec( 'DROP TABLE IF EXISTS hbr_t, hbr_other' );
 exec( 'rm -rf ' . escapeshellarg( $tmp ) );
 echo "ok: restore guard, piecewise files, SQL splitting and a table restore that runs only a table's own statements\n";

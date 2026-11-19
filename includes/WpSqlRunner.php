@@ -4,6 +4,11 @@ namespace WPEasy\HubConnector;
 defined( 'ABSPATH' ) || exit;
 
 class WpSqlRunner implements SqlRunner {
+	public function exists( $table ) {
+		global $wpdb;
+		return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) === $table; // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	}
+
 	public function exec( $sql ) {
 		global $wpdb;
 		$wpdb->suppress_errors( true );

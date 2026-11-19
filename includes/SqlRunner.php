@@ -7,4 +7,7 @@ defined( 'ABSPATH' ) || exit;
 interface SqlRunner {
 	/** @return true|string true when it ran, else the database's own error text. */
 	public function exec( $sql );
+
+	/** True when a table with this exact name exists. */
+	public function exists( $table );
 }
