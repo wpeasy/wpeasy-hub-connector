@@ -31,4 +31,16 @@ check( 1 === $n && 't' === $out, 'a #fragment does not hide it' );
 list( $out, $n ) = L::transform( '<a href="https://nothing.com">t</a>', $base, $url, 'unlink' );
 check( 0 === $n && '<a href="https://nothing.com">t</a>' === $out, 'nothing found, nothing changed' );
 
+// Pictures: a plain <img>, and a WordPress picture block (taken out whole).
+$pic = 'https://www.eximm.com/files/SERVpng/Old_logo.png';
+list( $out, $n ) = L::transform( '<p>Hi</p><img decoding="async" src="' . $pic . '" alt="x" style="width:408px"/><p>Bye</p>', $base, $pic, 'unlink' );
+check( 1 === $n && '<p>Hi</p><p>Bye</p>' === $out, 'unlink takes a plain picture out' );
+$block = "<!-- wp:paragraph --><p>A</p><!-- /wp:paragraph -->\n<!-- wp:image {\"id\":5} -->\n<figure class=\"wp-block-image\"><img src=\"$pic\" alt=\"\"/></figure>\n<!-- /wp:image -->\n<!-- wp:paragraph --><p>B</p><!-- /wp:paragraph -->";
+list( $out, $n ) = L::transform( $block, $base, $pic, 'unlink' );
+check( 1 === $n && false === strpos( $out, 'wp:image' ) && false === strpos( $out, '<figure' ) && false !== strpos( $out, '<p>A</p>' ) && false !== strpos( $out, '<p>B</p>' ), 'a picture block goes whole' );
+list( $out, $n ) = L::transform( '<img src="' . $pic . '" srcset="' . $pic . ' 300w" sizes="100vw" alt="x">', $base, $pic, 'replace', 'https://ok.com/new.png' );
+check( 1 === $n && false !== strpos( $out, 'src="https://ok.com/new.png"' ) && false === strpos( $out, 'srcset' ) && false !== strpos( $out, 'alt="x"' ), 'replace re-points a picture and drops its old sizes' );
+list( $out, $n ) = L::transform( '<img src="https://other.com/a.png"><a href="https://x.com">l</a>', $base, $pic, 'unlink' );
+check( 0 === $n, 'another picture is left alone' );
+
 echo "link-editor-test OK\n";

@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Edits or removes one link in the content of this website's pages and posts when the Hub asks (a link the Hub found broken).
- * "unlink" takes the link off but keeps its words; "replace" points it at a new address. It only touches the text of posts and pages
+ * "unlink" takes the link off but keeps its words (a picture is taken out); "replace" points it at a new address. It only touches the text of posts and pages
  * (post_content): links in menus, widgets, templates or page-builder data are not changed, and the answer says so when nothing was found.
  * Every change is a normal WordPress save, so each page keeps a revision to go back to (when the website keeps revisions).
  */
@@ -44,7 +44,48 @@ class LinkEditor {
 			},
 			(string) $html
 		);
-		return array( null === $out ? (string) $html : $out, $count );
+		$out = null === $out ? (string) $html : $out;
+
+		// Pictures count as links too (the Hub's checker also reports a picture that no longer loads): "unlink" takes the picture out, "replace" points it at a new address.
+		$img = function ( $chunk ) use ( $base, $target, $op, $to, &$count ) {
+			$found = 0;
+			$new   = preg_replace_callback(
+				'#<img\b[^>]*>#i',
+				function ( $m ) use ( $base, $target, $op, $to, &$count, &$found ) {
+					if ( ! preg_match( '#\bsrc\s*=\s*(["\'])(.*?)\1#is', $m[0], $h ) ) {
+						return $m[0];
+					}
+					$abs = self::resolve( html_entity_decode( $h[2], ENT_QUOTES | ENT_HTML5, 'UTF-8' ), $base );
+					if ( null === $abs || self::norm( $abs ) !== $target ) {
+						return $m[0];
+					}
+					++$count;
+					++$found;
+					if ( 'unlink' === $op ) {
+						return '';
+					}
+					$tag = str_replace( $h[0], 'src=' . $h[1] . htmlspecialchars( $to, ENT_QUOTES, 'UTF-8' ) . $h[1], $m[0] );
+					return preg_replace( '#\s(srcset|sizes)\s*=\s*(["\']).*?\2#is', '', $tag ); // the old sizes would still point at the old picture
+				},
+				$chunk
+			);
+			return array( null === $new ? $chunk : $new, $found );
+		};
+		// A WordPress picture block is taken out whole (its picture, caption and wrapper), so no empty block is left behind.
+		$out = preg_replace_callback(
+			'#<!-- wp:image\b.*?<!-- /wp:image -->#is',
+			function ( $m ) use ( $img, $op ) {
+				list( $inner, $found ) = $img( $m[0] );
+				if ( ! $found ) {
+					return $m[0];
+				}
+				return 'unlink' === $op ? '' : $inner;
+			},
+			$out
+		);
+		list( $out ) = $img( $out );
+
+		return array( $out, $count );
 	}
 
 	/** Makes a link absolute, the way a browser would (and the Hub's crawler did). Null for things that are not web addresses worth comparing (#, mailto, tel). */
