@@ -14,6 +14,8 @@ file_put_contents( $tmp . '/site/wp-content/debug.log', 'log' );
 file_put_contents( $tmp . '/site/wp-config.php', '<?php // config' );
 file_put_contents( $tmp . '/site/index.php', '<?php // core' );
 file_put_contents( $tmp . '/outside/secret.txt', 'secret' );
+chmod( $tmp . '/site/wp-content/uploads/2026/a.txt', 0640 );
+chmod( $tmp . '/site/wp-content/uploads/2026', 0750 );
 symlink( $tmp . '/outside', $tmp . '/site/wp-content/uploads/escape' );
 symlink( $tmp . '/outside/secret.txt', $tmp . '/site/wp-content/uploads/link.txt' );
 define( 'ABSPATH', $tmp . '/site/' );
@@ -42,6 +44,9 @@ $up = array_column( $r['dirs']['wp-content/uploads'], 'n' );
 if ( in_array( 'escape', $up, true ) || in_array( 'link.txt', $up, true ) || ! in_array( 'big.bin', $up, true ) ) { $fail( 'uploads listing wrong (symlinks must be left out): ' . json_encode( $up ) ); }
 if ( null !== $r['dirs']['wp-content/uploads/escape'] ) { $fail( 'a symlinked folder could be listed' ); }
 if ( null !== $r['dirs']['wp-content/cache'] ) { $fail( 'an excluded folder could be listed' ); }
+$modes = array();
+foreach ( BackupLister::dirs( array( 'wp-content/uploads', 'wp-content/uploads/2026' ) )['dirs'] as $list ) { foreach ( $list as $e ) { $modes[ $e['n'] ] = $e['p']; } }
+if ( 0750 !== $modes['2026'] || 0640 !== $modes['a.txt'] ) { $fail( 'permissions not reported: ' . json_encode( $modes ) ); }
 $top = array_column( $r['dirs'][''], 'n' );
 if ( ! in_array( 'wp-content', $top, true ) || ! in_array( 'wp-config.php', $top, true ) || in_array( 'index.php', $top, true ) ) { $fail( 'top level wrong: ' . json_encode( $top ) ); }
 

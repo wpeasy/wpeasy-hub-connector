@@ -39,7 +39,7 @@ class BackupLister {
 		if ( '' === $path ) {
 			$list = array();
 			foreach ( BackupPaths::roots() as $name => $abs ) {
-				$list[] = 'wp-content' === $name ? array( 'n' => $name, 't' => 'd' ) : array( 'n' => $name, 't' => 'f', 's' => (int) @filesize( $abs ), 'm' => (int) @filemtime( $abs ) );
+				$list[] = 'wp-content' === $name ? array( 'n' => $name, 't' => 'd', 'p' => self::mode( $abs ) ) : array( 'n' => $name, 't' => 'f', 's' => (int) @filesize( $abs ), 'm' => (int) @filemtime( $abs ), 'p' => self::mode( $abs ) );
 			}
 			return $list;
 		}
@@ -65,9 +65,9 @@ class BackupLister {
 				continue;
 			}
 			if ( is_dir( $full ) ) {
-				$list[] = array( 'n' => $name, 't' => 'd' );
+				$list[] = array( 'n' => $name, 't' => 'd', 'p' => self::mode( $full ) );
 			} elseif ( is_file( $full ) ) {
-				$list[] = array( 'n' => $name, 't' => 'f', 's' => (int) @filesize( $full ), 'm' => (int) @filemtime( $full ) );
+				$list[] = array( 'n' => $name, 't' => 'f', 's' => (int) @filesize( $full ), 'm' => (int) @filemtime( $full ), 'p' => self::mode( $full ) );
 			}
 		}
 		closedir( $h );
@@ -75,6 +75,12 @@ class BackupLister {
 			return strcmp( $a['n'], $b['n'] );
 		} );
 		return $list;
+	}
+
+	/** The permission bits (like 0755), so a restore can put them back. Owner and group are not recorded: they differ from host to host and a plugin cannot set them. */
+	private static function mode( $path ) {
+		$perms = @fileperms( $path );
+		return false === $perms ? null : ( $perms & 0777 );
 	}
 
 	private static function valid_text( $s ) {
