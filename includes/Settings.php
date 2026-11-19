@@ -60,7 +60,7 @@ class Settings {
 
 	public static function handle_options() {
 		self::guard( 'wpeasy_hub_options' );
-		Store::set( array( 'allow_login' => ! empty( $_POST['allow_login'] ) ) );
+		Store::set( array( 'allow_login' => ! empty( $_POST['allow_login'] ), 'allow_backup' => ! empty( $_POST['allow_backup'] ) ) );
 		self::back( true, __( 'Saved.', 'wpeasy-hub-connector' ) );
 	}
 
@@ -96,6 +96,8 @@ class Settings {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="wpeasy_hub_options">';
 			wp_nonce_field( 'wpeasy_hub_options' );
 			echo '<p><label><input type="checkbox" name="allow_login" value="1"' . checked( (bool) Store::get( 'allow_login', true ), true, false ) . '> ' . esc_html__( 'Let the Hub log in to this website as one of its administrators (chosen in the Hub). Note: this signs in directly, so it skips any two-factor step this website has.', 'wpeasy-hub-connector' ) . '</label></p>';
+			echo '<h2>' . esc_html__( 'Backups', 'wpeasy-hub-connector' ) . '</h2>';
+			echo '<p><label><input type="checkbox" name="allow_backup" value="1"' . checked( (bool) Store::get( 'allow_backup', true ), true, false ) . '> ' . esc_html__( 'Let the Hub back up this website: its files in wp-content (uploads, plugins, themes) and its database. The Hub asks for them a little at a time and keeps them locked with your agency\'s backup passphrase. Nothing else is sent, and nothing is sent unless the Hub asks.', 'wpeasy-hub-connector' ) . '</label></p>';
 			submit_button( __( 'Save', 'wpeasy-hub-connector' ), 'secondary', 'submit', false );
 			echo '</form><hr>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin-right:8px">';

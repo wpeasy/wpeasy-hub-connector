@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.2
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.7.0 =
+* Your Hub can back this website up: its wp-content files and its database, read a little at a time only when the Hub asks. A tick in Settings > Hub Connector turns it off.
 
 = 0.6.2 =
 * Broken pictures can be taken out of a page (or pointed at a new address) from the Hub too, not only text links.
