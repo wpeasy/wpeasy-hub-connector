@@ -15,7 +15,7 @@ class BackupLister {
 	 * @param int      $seconds Stop after about this many seconds, for the same reason.
 	 * @return array{dirs: array<string, ?array>, rest: string[], skipped: int}
 	 */
-	public static function dirs( array $paths, $max = 20000, $seconds = 20 ) {
+	public static function dirs( array $paths, $max = 20000, $seconds = 20, $core = false ) {
 		$out     = array();
 		$rest    = array();
 		$count   = 0;
@@ -27,7 +27,7 @@ class BackupLister {
 				$rest[] = $path;
 				continue;
 			}
-			$list = self::one( $path, $skipped );
+			$list = self::one( $path, $skipped, $core );
 			$out[ $path ] = $list;
 			$count       += is_array( $list ) ? count( $list ) : 0;
 		}
@@ -35,15 +35,15 @@ class BackupLister {
 	}
 
 	/** The entries of one folder, or null when it is not there (or not allowed). */
-	private static function one( $path, &$skipped ) {
+	private static function one( $path, &$skipped, $core = false ) {
 		if ( '' === $path ) {
 			$list = array();
-			foreach ( BackupPaths::roots() as $name => $abs ) {
-				$list[] = 'wp-content' === $name ? array( 'n' => $name, 't' => 'd', 'p' => self::mode( $abs ) ) : array( 'n' => $name, 't' => 'f', 's' => (int) @filesize( $abs ), 'm' => (int) @filemtime( $abs ), 'p' => self::mode( $abs ) );
+			foreach ( BackupPaths::roots( $core ) as $name => $abs ) {
+				$list[] = is_dir( $abs ) ? array( 'n' => $name, 't' => 'd', 'p' => self::mode( $abs ) ) : array( 'n' => $name, 't' => 'f', 's' => (int) @filesize( $abs ), 'm' => (int) @filemtime( $abs ), 'p' => self::mode( $abs ) );
 			}
 			return $list;
 		}
-		$abs = BackupPaths::resolve( $path );
+		$abs = BackupPaths::resolve( $path, $core );
 		if ( null === $abs || ! is_dir( $abs ) ) {
 			return null;
 		}

@@ -16,7 +16,7 @@ class BackupReader {
 	 * @param array<int, array{p?: string, o?: int, l?: int}> $items What to read: a path, an offset and a length.
 	 * @param int                                             $max   About how many bytes of file data to send in this response.
 	 */
-	public static function build( array $items, $max = 4194304 ) {
+	public static function build( array $items, $max = 4194304, $core = false ) {
 		$left   = max( 1, min( (int) $max, self::MAX_RESPONSE ) );
 		$out    = self::MAGIC;
 		$served = 0;
@@ -24,7 +24,7 @@ class BackupReader {
 			$path   = isset( $item['p'] ) ? (string) $item['p'] : '';
 			$offset = isset( $item['o'] ) ? max( 0, (int) $item['o'] ) : 0;
 			$length = isset( $item['l'] ) ? max( 0, (int) $item['l'] ) : $left;
-			$abs    = BackupPaths::resolve( $path );
+			$abs    = BackupPaths::resolve( $path, $core );
 			if ( null === $abs || ! is_file( $abs ) ) {
 				$out .= wp_json_encode_safe( array( 'p' => $path, 'o' => $offset, 'n' => 0, 'err' => 'missing' ) ) . "\n\n";
 				$served++;

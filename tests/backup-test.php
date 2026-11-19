@@ -13,6 +13,16 @@ file_put_contents( $tmp . '/site/wp-content/plugins/x/.git/config', 'git' );
 file_put_contents( $tmp . '/site/wp-content/debug.log', 'log' );
 file_put_contents( $tmp . '/site/wp-config.php', '<?php // config' );
 file_put_contents( $tmp . '/site/index.php', '<?php // core' );
+@mkdir( $tmp . '/site/wp-admin', 0777, true );
+file_put_contents( $tmp . '/site/wp-admin/admin.php', '<?php // core admin' );
+@mkdir( $tmp . '/site/.well-known', 0777, true );
+file_put_contents( $tmp . '/site/.well-known/security.txt', 'Contact: x' );
+@mkdir( $tmp . '/site/.git', 0777, true );
+file_put_contents( $tmp . '/site/.git/config', 'git' );
+file_put_contents( $tmp . '/site/.htaccess', 'RewriteEngine On' );
+file_put_contents( $tmp . '/site/.user.ini', 'memory_limit=512M' );
+file_put_contents( $tmp . '/site/ads.txt', 'google.com, pub-1' );
+file_put_contents( $tmp . '/site/robots.txt', 'User-agent: *' );
 file_put_contents( $tmp . '/outside/secret.txt', 'secret' );
 chmod( $tmp . '/site/wp-content/uploads/2026/a.txt', 0640 );
 chmod( $tmp . '/site/wp-content/uploads/2026', 0750 );
@@ -32,7 +42,7 @@ $fail = function ( $m ) use ( $tmp ) { fwrite( STDERR, "FAIL: $m\n" ); exit( 1 )
 // Paths
 if ( null === BackupPaths::resolve( 'wp-content/uploads/2026/a.txt' ) ) { $fail( 'a normal file was refused' ); }
 if ( null === BackupPaths::resolve( 'wp-config.php' ) ) { $fail( 'wp-config.php was refused' ); }
-foreach ( array( 'index.php', 'wp-content/../index.php', '../outside/secret.txt', 'wp-content/uploads/escape/secret.txt', 'wp-content/uploads/link.txt', 'wp-content/cache/c.txt', 'wp-content/plugins/x/.git/config', 'wp-content/debug.log', '/etc/passwd', "wp-content/uploads/a\0.txt", '' ) as $bad ) {
+foreach ( array( 'index.php', 'wp-admin/admin.php', '.git/config', 'wp-content/../index.php', '../outside/secret.txt', 'wp-content/uploads/escape/secret.txt', 'wp-content/uploads/link.txt', 'wp-content/cache/c.txt', 'wp-content/plugins/x/.git/config', 'wp-content/debug.log', '/etc/passwd', "wp-content/uploads/a\0.txt", '' ) as $bad ) {
 	if ( null !== BackupPaths::resolve( $bad ) ) { $fail( "a path that must be refused was allowed: " . json_encode( $bad ) ); }
 }
 
@@ -48,7 +58,11 @@ $modes = array();
 foreach ( BackupLister::dirs( array( 'wp-content/uploads', 'wp-content/uploads/2026' ) )['dirs'] as $list ) { foreach ( $list as $e ) { $modes[ $e['n'] ] = $e['p']; } }
 if ( 0750 !== $modes['2026'] || 0640 !== $modes['a.txt'] ) { $fail( 'permissions not reported: ' . json_encode( $modes ) ); }
 $top = array_column( $r['dirs'][''], 'n' );
-if ( ! in_array( 'wp-content', $top, true ) || ! in_array( 'wp-config.php', $top, true ) || in_array( 'index.php', $top, true ) ) { $fail( 'top level wrong: ' . json_encode( $top ) ); }
+foreach ( array( 'wp-content', 'wp-config.php', '.htaccess', '.user.ini', 'ads.txt', 'robots.txt', '.well-known' ) as $want ) { if ( ! in_array( $want, $top, true ) ) { $fail( "top level is missing $want: " . json_encode( $top ) ); } }
+foreach ( array( 'index.php', 'wp-admin', '.git' ) as $no ) { if ( in_array( $no, $top, true ) ) { $fail( "top level wrongly has $no (core or version control)" ); } }
+$with = array_column( BackupLister::dirs( array( '' ), 20000, 20, true )['dirs'][''], 'n' );
+if ( ! in_array( 'index.php', $with, true ) || ! in_array( 'wp-admin', $with, true ) ) { $fail( 'asking for core did not include it: ' . json_encode( $with ) ); }
+if ( null === BackupPaths::resolve( 'wp-admin/admin.php', true ) || null === BackupPaths::resolve( '.htaccess' ) ) { $fail( 'core with the flag, or .htaccess, was refused' ); }
 
 // Reader frames
 function frames( $data ) {

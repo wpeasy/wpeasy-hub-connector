@@ -32,7 +32,7 @@ class SiteBackup {
 					'plugin_version' => VERSION,
 					'multisite'      => is_multisite(),
 					'prefix'         => ( new WpBackupDb() )->prefix(),
-					'roots'          => array_keys( BackupPaths::roots() ),
+					'roots'          => array_keys( BackupPaths::roots( ! empty( $data['core'] ) ) ),
 					'max_response'   => BackupReader::MAX_RESPONSE,
 				);
 			case 'backup_dirs':
@@ -40,7 +40,7 @@ class SiteBackup {
 				foreach ( ( isset( $data['paths'] ) && is_array( $data['paths'] ) ? array_slice( $data['paths'], 0, 200 ) : array() ) as $p ) {
 					$paths[] = (string) $p;
 				}
-				return array( 'ok' => true ) + BackupLister::dirs( $paths, 20000, 20 );
+				return array( 'ok' => true ) + BackupLister::dirs( $paths, 20000, 20, ! empty( $data['core'] ) );
 			case 'backup_files':
 				$items = array();
 				foreach ( ( isset( $data['items'] ) && is_array( $data['items'] ) ? array_slice( $data['items'], 0, 200 ) : array() ) as $i ) {
@@ -48,7 +48,7 @@ class SiteBackup {
 						$items[] = array( 'p' => isset( $i['p'] ) ? (string) $i['p'] : '', 'o' => isset( $i['o'] ) ? (int) $i['o'] : 0, 'l' => isset( $i['l'] ) ? (int) $i['l'] : 4194304 );
 					}
 				}
-				return BackupReader::build( $items, isset( $data['max'] ) ? (int) $data['max'] : 4194304 );
+				return BackupReader::build( $items, isset( $data['max'] ) ? (int) $data['max'] : 4194304, ! empty( $data['core'] ) );
 			case 'backup_tables':
 				$dumper = new BackupDumper( new WpBackupDb() );
 				return array( 'ok' => true, 'prefix' => ( new WpBackupDb() )->prefix(), 'tables' => $dumper->tables() );
