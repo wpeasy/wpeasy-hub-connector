@@ -55,7 +55,9 @@ class SiteBackup {
 			case 'backup_rows':
 				$cursor = null;
 				if ( isset( $data['cursor'] ) && is_array( $data['cursor'] ) ) {
-					if ( array_key_exists( 'k', $data['cursor'] ) && ( is_string( $data['cursor']['k'] ) || is_int( $data['cursor']['k'] ) || is_float( $data['cursor']['k'] ) ) ) {
+					if ( isset( $data['cursor']['kx'] ) && is_string( $data['cursor']['kx'] ) && 1 === preg_match( '/^(?:[0-9a-f]{2})*$/i', $data['cursor']['kx'] ) ) {
+						$cursor = array( 'kx' => $data['cursor']['kx'] ); // a binary key, as hex (0.8.2)
+					} elseif ( array_key_exists( 'k', $data['cursor'] ) && ( is_string( $data['cursor']['k'] ) || is_int( $data['cursor']['k'] ) || is_float( $data['cursor']['k'] ) ) ) {
 						$cursor = array( 'k' => (string) $data['cursor']['k'] );
 					} elseif ( isset( $data['cursor']['o'] ) ) {
 						$cursor = array( 'o' => max( 0, (int) $data['cursor']['o'] ) );
