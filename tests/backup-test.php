@@ -132,6 +132,27 @@ $metaAfter = $pdo->query( 'SELECT MD5(GROUP_CONCAT(CONCAT_WS("|",a,b) ORDER BY a
 if ( $before !== $after ) { $fail( 'restored posts differ from the original (keyset paging)' ); }
 if ( $metaBefore !== $metaAfter ) { $fail( 'restored meta differs (offset paging, no primary key)' ); }
 if ( 450 !== (int) $pdo->query( 'SELECT COUNT(*) FROM hbt_posts' )->fetchColumn() ) { $fail( 'row count differs' ); }
+// A table whose primary key is binary: the cursor goes through JSON between pages (as it does to the Hub and back), which used to damage the key and make paging go round in circles.
+$pdo->exec( 'DROP TABLE IF EXISTS hbt_bin' );
+$pdo->exec( 'CREATE TABLE hbt_bin (k binary(16) NOT NULL, v int, PRIMARY KEY (k)) ENGINE=InnoDB' );
+$insb = $pdo->prepare( 'INSERT INTO hbt_bin (k, v) VALUES (?, ?)' );
+for ( $i = 1; $i <= 450; $i++ ) { $insb->execute( array( md5( "row$i", true ), $i ) ); }
+$d2 = new BackupDumper( $db );
+$allb = ''; $cursor = null; $guard = 0; $seen = array();
+do {
+	$p = $d2->page( 'hbt_bin', $cursor, 60, 20000 );
+	$allb .= $p['sql'];
+	$cursor = null === $p['next'] ? null : json_decode( json_encode( $p['next'] ), true ); // the trip through JSON
+	if ( null !== $cursor ) { $fp = md5( serialize( $cursor ) ); if ( isset( $seen[ $fp ] ) ) { $fail( 'binary key paging went round in a circle' ); } $seen[ $fp ] = true; }
+	$guard++;
+} while ( ! $p['done'] && $guard < 200 );
+if ( $guard >= 200 ) { $fail( 'binary key paging never finished' ); }
+$beforeb = $pdo->query( 'SELECT MD5(GROUP_CONCAT(CONCAT_WS("|",HEX(k),v) ORDER BY k)) FROM hbt_bin' )->fetchColumn();
+$pdo->exec( 'DROP TABLE hbt_bin' );
+$pdo->exec( $allb );
+$afterb = $pdo->query( 'SELECT MD5(GROUP_CONCAT(CONCAT_WS("|",HEX(k),v) ORDER BY k)) FROM hbt_bin' )->fetchColumn();
+if ( $beforeb !== $afterb || 450 !== (int) $pdo->query( 'SELECT COUNT(*) FROM hbt_bin' )->fetchColumn() ) { $fail( 'a table with a binary key did not dump and restore exactly' ); }
+$pdo->exec( 'DROP TABLE IF EXISTS hbt_bin' );
 $pdo->exec( 'DROP TABLE IF EXISTS hbt_posts, hbt_meta, other_table' );
 exec( 'rm -rf ' . escapeshellarg( $tmp ) );
 echo "ok: backup paths, listing, file frames and a database dump that restores exactly\n";

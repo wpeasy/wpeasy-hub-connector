@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.1
+Stable tag: 0.8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.8.2 =
+* Backups: a database table whose key is binary (for example some Wordfence tables) is now read page by page correctly. Before, the position was damaged on the way to the Hub and the table was read round and round without ever finishing.
 
 = 0.8.1 =
 * Restore now uses the plugin's own maintenance notice (WordPress's switches every plugin off, so the Hub could not be answered), and keeps its pairing safe while a restored settings table is put back.

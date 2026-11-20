@@ -75,7 +75,10 @@ class BackupDumper {
 		$offset = 0;
 		if ( null !== $single ) {
 			$order = self::ident( $single );
-			if ( is_array( $cursor ) && array_key_exists( 'k', $cursor ) ) {
+			if ( is_array( $cursor ) && isset( $cursor['kx'] ) && is_string( $cursor['kx'] ) && 1 === preg_match( '/^(?:[0-9a-f]{2})*$/i', $cursor['kx'] ) ) {
+				// A key that is binary (or not valid text) travels as hex: raw bytes do not survive JSON, and a damaged key made the paging go round in circles.
+				$where = ' WHERE ' . $order . ' > ' . ( '' === $cursor['kx'] ? "''" : '0x' . $cursor['kx'] );
+			} elseif ( is_array( $cursor ) && array_key_exists( 'k', $cursor ) ) {
 				$where = ' WHERE ' . $order . ' > ' . self::literal( $cursor['k'], $cols[ $single ]['kind'] );
 			}
 		} else {
@@ -126,7 +129,13 @@ class BackupDumper {
 		$all  = ( $used === count( $rows ) ) && ! $more;
 		$next = null;
 		if ( ! $all && $used > 0 ) {
-			$next = null !== $single ? array( 'k' => $last[ $single ] ) : array( 'o' => $offset + $used );
+			if ( null === $single ) {
+				$next = array( 'o' => $offset + $used );
+			} elseif ( 'binary' === $cols[ $single ]['kind'] || ( is_string( $last[ $single ] ) && 1 !== preg_match( '//u', $last[ $single ] ) ) ) {
+				$next = array( 'kx' => bin2hex( (string) $last[ $single ] ) );
+			} else {
+				$next = array( 'k' => $last[ $single ] );
+			}
 		}
 		return array( 'sql' => $sql, 'rows' => $used, 'next' => $next, 'done' => $all );
 	}
