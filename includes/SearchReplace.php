@@ -30,6 +30,9 @@ class SearchReplace {
 		if ( is_string( $o ) ) {
 			return array( 'ok' => false, 'code' => 'bad', 'message' => $o );
 		}
+		if ( 0 === strpos( $op, 'f' ) && in_array( $op, array( 'fscan_start', 'fscan_step', 'frun_start', 'frun_step', 'fundo' ), true ) ) {
+			return FileReplace::handle( $op, $data, $o );
+		}
 		if ( 'scan' === $op ) {
 			return self::scan( $o, isset( $data['tables'] ) ? (array) $data['tables'] : null );
 		}
@@ -48,7 +51,7 @@ class SearchReplace {
 	/** The search, the replacement and the switches, checked. A string is returned for a problem. */
 	private static function options( $data ) {
 		$op = isset( $data['op'] ) ? (string) $data['op'] : '';
-		if ( in_array( $op, array( 'step', 'undo' ), true ) ) {
+		if ( in_array( $op, array( 'step', 'undo', 'fscan_step', 'frun_step', 'frun_start', 'fundo' ), true ) ) {
 			return array();
 		}
 		$search = isset( $data['search'] ) ? (string) $data['search'] : '';
@@ -98,7 +101,7 @@ class SearchReplace {
 	}
 
 	/** The things a value is searched for: the text itself, and the JSON-escaped form of an address. */
-	private static function needles( $o ) {
+	public static function needles( $o ) {
 		$n = array( array( $o['search'], $o['replace'] ) );
 		if ( $o['json'] && false !== strpos( $o['search'], '/' ) ) {
 			$n[] = array( str_replace( '/', '\\/', $o['search'] ), str_replace( '/', '\\/', $o['replace'] ) );
@@ -374,7 +377,7 @@ class SearchReplace {
 		return self::plain( $old, $o );
 	}
 
-	private static function plain( $s, $o ) {
+	public static function plain( $s, $o ) {
 		foreach ( self::needles( $o ) as $n ) {
 			$s = $o['case'] ? str_replace( $n[0], $n[1], $s ) : str_ireplace( $n[0], $n[1], $s );
 		}
