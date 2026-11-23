@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.3
+Stable tag: 0.8.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.8.4 =
+* The report now includes how many people hold each user role and when each administrator was added, so the Hub can show them and flag new administrators.
 
 = 0.8.3 =
 * Backups: the fix for tables with a binary key in 0.8.2 did not reach the request handler, so the table was still read in circles. It now does.

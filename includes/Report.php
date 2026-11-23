@@ -69,8 +69,19 @@ class Report {
 
 		// The administrators, so the Hub can be told which one a one-click login is as. Names only: no emails, no passwords.
 		$admins = array();
-		foreach ( get_users( array( 'role' => 'administrator', 'number' => 50, 'orderby' => 'ID', 'fields' => array( 'ID', 'user_login', 'display_name' ) ) ) as $u ) {
-			$admins[ (int) $u->ID ] = array( 'id' => (int) $u->ID, 'login' => $u->user_login, 'name' => $u->display_name );
+		foreach ( get_users( array( 'role' => 'administrator', 'number' => 50, 'orderby' => 'ID', 'fields' => array( 'ID', 'user_login', 'display_name', 'user_registered' ) ) ) as $u ) {
+			$admins[ (int) $u->ID ] = array( 'id' => (int) $u->ID, 'login' => $u->user_login, 'name' => $u->display_name, 'registered' => $u->user_registered ? gmdate( 'c', strtotime( $u->user_registered . ' UTC' ) ) : null );
+		}
+
+		// How many people hold each role (counts only, no names), so the Hub can show who has what and notice new administrators.
+		$user_roles = array();
+		$counted    = count_users();
+		$names      = wp_roles()->get_names();
+		foreach ( (array) ( $counted['avail_roles'] ?? array() ) as $role => $n ) {
+			if ( 'none' === $role || (int) $n < 1 ) {
+				continue;
+			}
+			$user_roles[] = array( 'role' => (string) $role, 'label' => isset( $names[ $role ] ) ? translate_user_role( $names[ $role ] ) : (string) $role, 'count' => (int) $n );
 		}
 
 		$theme = wp_get_theme();
@@ -86,6 +97,7 @@ class Report {
 			'plugins'        => $plugins,
 			'themes'         => $themes,
 			'admins'         => array_values( $admins ),
+			'user_roles'     => $user_roles,
 			'backups'        => Backup::stats(), // keyed by ID above: a user whose role is stored twice in the database comes back twice
 			'login_allowed'  => (bool) Store::get( 'allow_login', true ),
 			'backup_allowed' => (bool) Store::get( 'allow_backup', true ),
