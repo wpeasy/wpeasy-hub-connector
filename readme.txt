@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.9.1
+Stable tag: 0.9.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.9.2 =
+* The Hub can list the people of one role and delete the ones it is told to (for example fake sign-ups). It never deletes anyone who can edit the website or who has written content, and each person deleted is saved on the website for 30 days so it can be undone.
 
 = 0.9.1 =
 * A fix the Hub can ask for after the database scan: a person whose role list is saved more than once keeps one copy. Only identical copies are removed, they are saved on the website first for 30 days so it can be undone, and nothing else is touched.
