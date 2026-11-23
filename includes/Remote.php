@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 class Remote {
 	/** What the signature is made over in place of an address (the request itself goes to the home page). */
 	const PATH    = '/wpeasy-hub-action';
-	const ACTIONS = array( 'report', 'update', 'remove', 'link', 'backup_info', 'backup_dirs', 'backup_files', 'backup_tables', 'backup_rows', 'restore_begin', 'restore_dirs', 'restore_files', 'restore_sql', 'restore_core', 'restore_finish', 'db_scan', 'db_fix', 'users', 'cleanup' );
+	const ACTIONS = array( 'report', 'update', 'remove', 'link', 'backup_info', 'backup_dirs', 'backup_files', 'backup_tables', 'backup_rows', 'restore_begin', 'restore_dirs', 'restore_files', 'restore_sql', 'restore_core', 'restore_finish', 'db_scan', 'db_fix', 'users', 'cleanup', 'shield' );
 
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'maybe_handle' ), 1 );
@@ -128,6 +128,9 @@ class Remote {
 				ob_end_clean();
 			}
 			wp_send_json( $res + array( 'plugin_version' => VERSION ) );
+		}
+		if ( in_array( $action, Shield::ACTIONS, true ) ) {
+			wp_send_json( Shield::handle( $action, $data ) + array( 'plugin_version' => VERSION ) );
 		}
 		if ( 'update' === $action ) {
 			$kind = isset( $data['kind'] ) ? (string) $data['kind'] : '';

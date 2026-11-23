@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.9.3
+Stable tag: 0.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.10.0 =
+* Shield mode. While the Hub has it on, visitors without a preview link see a plain "in development" page (kept out of search engines) instead of the website. The Hub makes and revokes the preview links. People signed in to WordPress, the sign-in page and the Hub's own requests are never stopped.
 
 = 0.9.3 =
 * Clean-up the Hub can ask for: count, then remove old revisions, auto-drafts never saved, things in the trash, spam and trashed comments, expired temporary data and details left behind by things already deleted. Only those kinds, in batches.
