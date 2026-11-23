@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.4
+Stable tag: 0.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.9.0 =
+* A read-only database scan the Hub can ask for: how roles are stored for users (duplicates, damaged lists, people with no role here, roles left under another prefix after a multisite move, leftover tables). It changes nothing.
 
 = 0.8.4 =
 * The report now includes how many people hold each user role and when each administrator was added, so the Hub can show them and flag new administrators.
