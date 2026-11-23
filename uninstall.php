@@ -14,3 +14,6 @@ delete_option( 'wpeasy_hub_connector' );
 wp_clear_scheduled_hook( 'wpeasy_hub_connector_report' );
 wp_clear_scheduled_hook( 'wpeasy_hub_connector_backups' );
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( 'wpeasy_hub_used_' ) . '%' ) );
+
+$wpdb->query( 'DROP TABLE IF EXISTS `' . $wpdb->prefix . 'wpeasy_hub_sr`' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- the journal of search and replace runs
+$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( 'wpeasy_hub_sr_' ) . '%' ) );

@@ -25,8 +25,17 @@ class Tables {
 		return array( 'ok' => false, 'code' => 'unknown', 'message' => 'Unknown request.' );
 	}
 
+	/** MySQL 8 answers table sizes from a cache that is up to a day old (and is not refreshed by a rebuild), so ask for fresh figures; other servers do not have the setting. */
+	private static function fresh() {
+		global $wpdb;
+		$wpdb->suppress_errors( true );
+		$wpdb->query( 'SET SESSION information_schema_stats_expiry = 0' );
+		$wpdb->suppress_errors( false );
+	}
+
 	private static function rows() {
 		global $wpdb;
+		self::fresh();
 		return (array) $wpdb->get_results( $wpdb->prepare( 'SELECT TABLE_NAME AS name, ENGINE AS engine, TABLE_ROWS AS table_rows, DATA_LENGTH AS data_bytes, INDEX_LENGTH AS index_bytes, DATA_FREE AS free_bytes, TABLE_COLLATION AS collation FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = %s ORDER BY (DATA_LENGTH + INDEX_LENGTH) DESC', 'BASE TABLE' ) );
 	}
 
@@ -53,7 +62,7 @@ class Tables {
 		$auto = (array) $wpdb->get_results( "SELECT option_name, LENGTH(option_value) AS bytes FROM {$wpdb->options} WHERE autoload IN ('yes','on','auto','auto-on') ORDER BY bytes DESC LIMIT 25" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$auto_total = (int) $wpdb->get_var( "SELECT SUM(LENGTH(option_value)) FROM {$wpdb->options} WHERE autoload IN ('yes','on','auto','auto-on')" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$auto_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options} WHERE autoload IN ('yes','on','auto','auto-on')" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return array( 'ok' => true, 'prefix' => $prefix, 'tables' => $tables, 'total' => $total, 'free' => $free,
+		return array( 'ok' => true, 'server' => substr( (string) $wpdb->get_var( 'SELECT VERSION()' ), 0, 60 ), 'prefix' => $prefix, 'tables' => $tables, 'total' => $total, 'free' => $free,
 			'autoload' => array( 'bytes' => $auto_total, 'count' => $auto_count, 'top' => array_map( function ( $o ) { return array( 'name' => (string) $o->option_name, 'bytes' => (int) $o->bytes ); }, $auto ) ) );
 	}
 
@@ -80,6 +89,7 @@ class Tables {
 				break; // the rest are asked again
 			}
 			$before = (int) $known[ $n ]->data_bytes + (int) $known[ $n ]->index_bytes;
+			$free_before = (int) $known[ $n ]->free_bytes;
 			$res    = $wpdb->get_results( 'OPTIMIZE TABLE `' . str_replace( '`', '``', $n ) . '`' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- the name is one of the database's own tables, checked above
 			$msg    = '';
 			$ok     = true;
@@ -90,8 +100,9 @@ class Tables {
 					$msg = (string) $row->Msg_text;
 				}
 			}
-			$after = $wpdb->get_row( $wpdb->prepare( 'SELECT DATA_LENGTH AS d, INDEX_LENGTH AS i FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $n ) );
-			$done[] = array( 'name' => $n, 'ok' => $ok, 'message' => substr( $msg, 0, 160 ), 'before' => $before, 'after' => $after ? (int) $after->d + (int) $after->i : $before );
+			self::fresh();
+			$after = $wpdb->get_row( $wpdb->prepare( 'SELECT DATA_LENGTH AS d, INDEX_LENGTH AS i, DATA_FREE AS f FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $n ) );
+			$done[] = array( 'name' => $n, 'ok' => $ok, 'message' => substr( $msg, 0, 160 ), 'before' => $before, 'after' => $after ? (int) $after->d + (int) $after->i : $before, 'free_before' => $free_before, 'free_after' => $after ? (int) $after->f : $free_before );
 		}
 		$finished = array_column( $done, 'name' );
 		$left     = array_values( array_diff( array_unique( array_map( 'strval', $names ) ), $finished, array_column( $skipped, 'name' ) ) );
