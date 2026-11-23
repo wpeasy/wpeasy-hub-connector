@@ -57,6 +57,15 @@ class DbFix {
 				$out['people'][ $uid ]['keys'][] = substr( $key, strlen( $wpdb->prefix ) );
 				if ( ! $same ) {
 					$out['people'][ $uid ]['differs'] = true;
+					$seen = array();
+					foreach ( $copies as $c ) {
+						$seen[ (string) $c->meta_value ] = isset( $seen[ (string) $c->meta_value ] ) ? $seen[ (string) $c->meta_value ] + 1 : 1;
+					}
+					$show = array();
+					foreach ( array_slice( $seen, 0, 4, true ) as $val => $n ) {
+						$show[] = array( 'value' => mb_substr( (string) $val, 0, 160 ), 'copies' => $n );
+					}
+					$out['people'][ $uid ]['diff'][ substr( $key, strlen( $wpdb->prefix ) ) ] = array( 'kinds' => count( $seen ), 'values' => $show );
 					continue;
 				}
 				foreach ( array_slice( $copies, 1 ) as $c ) {
