@@ -30,7 +30,7 @@ class DbFix {
 		return array( 'ok' => false, 'code' => 'unknown', 'message' => 'Unknown request.' );
 	}
 
-	/** The role entries to remove: for each person with the role list saved more than once, the copies after the first (oldest) one, when all copies are the same. */
+	/** The role entries to remove: for each person with the role list saved more than once, every copy but one. When all copies are the same the oldest is kept; when they differ the one giving the most access is kept. */
 	private static function plan() {
 		global $wpdb;
 		$meta  = $wpdb->usermeta;
@@ -57,7 +57,8 @@ class DbFix {
 				$out['people'][ $uid ]['keys'][] = substr( $key, strlen( $wpdb->prefix ) );
 				if ( ! $same ) {
 					$out['people'][ $uid ]['differs'] = true;
-					$seen = array();
+					$short = substr( $key, strlen( $wpdb->prefix ) );
+					$seen  = array();
 					foreach ( $copies as $c ) {
 						$seen[ (string) $c->meta_value ] = isset( $seen[ (string) $c->meta_value ] ) ? $seen[ (string) $c->meta_value ] + 1 : 1;
 					}
@@ -65,7 +66,23 @@ class DbFix {
 					foreach ( array_slice( $seen, 0, 4, true ) as $val => $n ) {
 						$show[] = array( 'value' => mb_substr( (string) $val, 0, 160 ), 'copies' => $n );
 					}
-					$out['people'][ $uid ]['diff'][ substr( $key, strlen( $wpdb->prefix ) ) ] = array( 'kinds' => count( $seen ), 'values' => $show );
+					$best = self::best( $short, $copies );
+					if ( null === $best ) { // Nothing readable to choose from: leave this person alone.
+						$out['people'][ $uid ]['unreadable'] = true;
+						continue;
+					}
+					$out['people'][ $uid ]['diff'][ $short ] = array( 'kinds' => count( $seen ), 'values' => $show, 'keep' => mb_substr( (string) $copies[ $best ]->meta_value, 0, 160 ) );
+					// WordPress reads the first (oldest) copy; keeping a different one changes what the person can do.
+					if ( self::normal( $copies[0]->meta_value ) !== self::normal( $copies[ $best ]->meta_value ) ) {
+						$out['people'][ $uid ]['access_changes'][] = $short;
+					}
+					foreach ( $copies as $i => $c ) {
+						if ( $i === $best ) {
+							continue;
+						}
+						$out['remove'][ (int) $c->umeta_id ] = array( 'umeta_id' => (int) $c->umeta_id, 'user_id' => (int) $c->user_id, 'meta_key' => $c->meta_key, 'meta_value' => $c->meta_value );
+						++$out['people'][ $uid ]['remove'];
+					}
 					continue;
 				}
 				foreach ( array_slice( $copies, 1 ) as $c ) {
@@ -86,6 +103,39 @@ class DbFix {
 		return $out;
 	}
 
+
+	/** Which copy to keep when they differ: the one that gives the most access (highest role, then most capabilities); for the old user level the highest number. Earlier copy wins a tie. Null when none can be read. */
+	private static function best( $short, $copies ) {
+		$rank = array( 'administrator' => 100, 'editor' => 70, 'shop_manager' => 60, 'author' => 50, 'contributor' => 30, 'subscriber' => 10 );
+		$best = null;
+		$top  = null;
+		foreach ( $copies as $i => $c ) {
+			if ( 'user_level' === $short ) {
+				if ( ! is_numeric( $c->meta_value ) ) {
+					continue;
+				}
+				$score = array( (int) $c->meta_value, 0 );
+			} else {
+				$v = is_string( $c->meta_value ) ? @unserialize( $c->meta_value, array( 'allowed_classes' => false ) ) : null; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize
+				if ( ! is_array( $v ) ) {
+					continue;
+				}
+				$r = 0;
+				foreach ( $v as $role => $on ) {
+					if ( $on && isset( $rank[ $role ] ) ) {
+						$r = max( $r, $rank[ $role ] );
+					}
+				}
+				$score = array( $r, count( array_filter( $v ) ) );
+			}
+			if ( null === $top || $score > $top ) {
+				$top  = $score;
+				$best = $i;
+			}
+		}
+		return $best;
+	}
+
 	/** Two copies are the same when they hold the same list of roles, whatever the order. */
 	private static function normal( $value ) {
 		$v = is_string( $value ) ? @unserialize( $value, array( 'allowed_classes' => false ) ) : null; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize
@@ -103,6 +153,8 @@ class DbFix {
 			'rows'         => count( $plan['remove'] ),
 			'people'       => count( array_filter( $plan['people'], function ( $p ) { return $p['remove'] > 0; } ) ),
 			'differs'      => count( array_filter( $plan['people'], function ( $p ) { return $p['differs']; } ) ),
+			'left_alone'   => count( array_filter( $plan['people'], function ( $p ) { return ! empty( $p['unreadable'] ); } ) ),
+			'access_changes' => count( array_filter( $plan['people'], function ( $p ) { return ! empty( $p['access_changes'] ); } ) ),
 			'list'         => array_slice( $people, 0, 50 ),
 			'capped'       => count( $plan['remove'] ) >= self::LIMIT,
 		);
