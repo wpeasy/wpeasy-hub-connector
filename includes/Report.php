@@ -68,8 +68,11 @@ class Report {
 		}
 
 		// The administrators, so the Hub can be told which one a one-click login is as. Names only: no emails, no passwords.
+		// Read straight from the database, one row per person: a person whose role list is saved more than once (it happens after some migrations) would otherwise use up the limit with copies of themselves and push other administrators off the list.
 		$admins = array();
-		foreach ( get_users( array( 'role' => 'administrator', 'number' => 50, 'orderby' => 'ID', 'fields' => array( 'ID', 'user_login', 'display_name', 'user_registered' ) ) ) as $u ) {
+		global $wpdb;
+		$rows = (array) $wpdb->get_results( $wpdb->prepare( "SELECT DISTINCT u.ID, u.user_login, u.display_name, u.user_registered FROM {$wpdb->users} u JOIN {$wpdb->usermeta} m ON m.user_id = u.ID WHERE m.meta_key = %s AND m.meta_value LIKE %s ORDER BY u.ID LIMIT 200", $wpdb->prefix . 'capabilities', '%' . $wpdb->esc_like( '"administrator"' ) . '%' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ( $rows as $u ) {
 			$admins[ (int) $u->ID ] = array( 'id' => (int) $u->ID, 'login' => $u->user_login, 'name' => $u->display_name, 'registered' => $u->user_registered ? gmdate( 'c', strtotime( $u->user_registered . ' UTC' ) ) : null );
 		}
 
