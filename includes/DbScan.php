@@ -119,7 +119,9 @@ class DbScan {
 		$role_opts  = (array) $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s LIMIT 40", '%' . $wpdb->esc_like( 'user_roles' ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$own_option = $prefix . 'user_roles';
 		$left_opts  = array_values( array_diff( $role_opts, array( $own_option ) ) );
-		if ( ! in_array( $own_option, $role_opts, true ) ) {
+		// The list above is capped, and a site moved out of a network can have hundreds of leftovers, so ask for its own option by exact name.
+		$has_own = in_array( $own_option, $role_opts, true ) || (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s", $own_option ) ) > 0; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( ! $has_own ) {
 			$findings[] = array( 'code' => 'roles_option_missing', 'severity' => 'bad', 'count' => 1, 'option' => $own_option );
 		}
 		if ( $left_opts ) {

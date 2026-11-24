@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.13.2
+Stable tag: 0.13.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.13.3 =
+* The database scan no longer says a website's role list is missing when the website has hundreds of leftover role lists from an old network: it now asks for the website's own by exact name.
 
 = 0.13.0 =
 * Search and replace can also look inside files (style sheets, scripts, SVG, JSON...) in uploads, the theme or other plugins: a preview first, files written through a temporary copy, originals kept outside the web for 30 days so it can be undone. Text files only, never symbolic links, PHP only when asked.
