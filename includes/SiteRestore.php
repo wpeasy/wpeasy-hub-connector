@@ -31,7 +31,7 @@ class SiteRestore {
 			case 'restore_core':
 				return RestoreCore::run( isset( $data['version'] ) ? $data['version'] : '' );
 			case 'restore_finish':
-				return RestoreState::finish();
+				return RestoreState::finish( ! empty( $data['permalinks'] ) );
 		}
 		return array( 'ok' => false, 'message' => 'Unknown restore step.' );
 	}

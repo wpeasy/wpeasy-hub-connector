@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.13.3
+Stable tag: 0.14.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,10 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.14.0 =
+* Moving a website: the search and replace inside files can now also look in every installed theme, in must-use plugins and in other folders inside wp-content, so the old address is changed wherever it is found.
+* Moving a website: when the Hub finishes a move it can ask this website to rebuild its pretty-address (permalink) rules and write .htaccess, so pages other than the home page work straight away.
 
 = 0.13.3 =
 * The database scan no longer says a website's role list is missing when the website has hundreds of leftover role lists from an old network: it now asks for the website's own by exact name.

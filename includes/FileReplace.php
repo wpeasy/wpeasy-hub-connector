@@ -9,6 +9,8 @@ defined( 'ABSPATH' ) || exit;
  * chosen by number (the Hub never names a path). Every file changed is first copied into a folder the web cannot read (kept 30 days) so the run can be undone, and written through a temporary
  * copy so a file is never half written. Text files only (by extension, over 5 MB skipped), never symbolic links, only inside the chosen places: uploads, the active theme, other plugins.
  * PHP files only when asked, and never this plugin's own files.
+ * Places (scopes): uploads; theme (the active theme and its parent); themes (every installed theme); plugins; mu-plugins (must-use plugins); content (any other folder inside wp-content that is not a cache,
+ * a backup or one of the places above).
  */
 class FileReplace {
 	const PREVIEW   = 'wpeasy_hub_srf_';
@@ -20,6 +22,8 @@ class FileReplace {
 	const KEEP      = 30 * DAY_IN_SECONDS;
 	const EXT       = array( 'css', 'js', 'mjs', 'json', 'svg', 'html', 'htm', 'xml', 'txt', 'scss', 'less', 'map', 'webmanifest' );
 	const SKIP_DIRS = array( 'node_modules', '.git', '.svn', 'wpeasy-hub-backups', 'wpeasy-hub-connector' );
+	/** Folders inside wp-content that the 'content' place never searches: the places above, caches (rebuilt by themselves), backups and logs. */
+	const CONTENT_SKIP = array( 'plugins', 'themes', 'uploads', 'mu-plugins', 'upgrade', 'cache', 'languages', 'backups', 'backup', 'updraft', 'ai1wm-backups', 'wpvividbackups', 'wflogs', 'et-cache', 'litespeed', 'w3tc-config', 'wp-rocket-config', 'sessions', 'temp', 'tmp', 'logs', 'log' );
 
 	public static function handle( $op, $data, $o ) {
 		switch ( $op ) {
@@ -37,13 +41,16 @@ class FileReplace {
 		return array( 'ok' => false, 'code' => 'unknown', 'message' => 'Unknown request.' );
 	}
 
-	/** The places that may be searched: scope => list of folders. */
+	/** The places that may be searched: scope => list of folders. A place inside another chosen place is left out, so no file is looked at twice. */
 	private static function roots( $scopes ) {
 		$u    = wp_upload_dir();
 		$all  = array(
-			'uploads' => array( $u['basedir'] ),
-			'theme'   => array_values( array_unique( array( get_stylesheet_directory(), get_template_directory() ) ) ),
-			'plugins' => array( WP_PLUGIN_DIR ),
+			'uploads'    => array( $u['basedir'] ),
+			'theme'      => array_values( array_unique( array( get_stylesheet_directory(), get_template_directory() ) ) ),
+			'themes'     => array_values( array_unique( array( get_theme_root(), WP_CONTENT_DIR . '/themes' ) ) ),
+			'plugins'    => array( WP_PLUGIN_DIR ),
+			'mu-plugins' => array( defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : WP_CONTENT_DIR . '/mu-plugins' ),
+			'content'    => in_array( 'content', $scopes, true ) ? self::other_content_dirs() : array(),
 		);
 		$out = array();
 		foreach ( $scopes as $s ) {
@@ -56,7 +63,36 @@ class FileReplace {
 				}
 			}
 		}
-		return $out;
+		$kept = array();
+		foreach ( $out as $i => $r ) {
+			$inside = false;
+			foreach ( $out as $j => $other ) {
+				if ( $i !== $j && ( $other[1] === $r[1] ? $j < $i : 0 === strpos( $r[1] . '/', rtrim( $other[1], '/' ) . '/' ) ) ) {
+					$inside = true; // the same folder named twice, or a folder inside another one that is also searched
+					break;
+				}
+			}
+			if ( ! $inside ) {
+				$kept[] = $r;
+			}
+		}
+		return $kept;
+	}
+
+	/** Folders directly inside wp-content that belong to none of the other places (a site's own folders, a page builder's data...). */
+	private static function other_content_dirs() {
+		$dirs = array();
+		$base = rtrim( wp_normalize_path( WP_CONTENT_DIR ), '/' );
+		foreach ( (array) @scandir( $base ) as $name ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			if ( '.' === $name || '..' === $name || '' === $name || in_array( strtolower( $name ), self::CONTENT_SKIP, true ) || in_array( $name, self::SKIP_DIRS, true ) || 0 === strpos( $name, '.' ) || 0 === strpos( $name, 'wpeasy-hub-' ) ) {
+				continue;
+			}
+			$path = $base . '/' . $name;
+			if ( is_dir( $path ) && ! is_link( $path ) ) {
+				$dirs[] = $path;
+			}
+		}
+		return $dirs;
 	}
 
 	private static function inside( $path, $root ) {
@@ -86,7 +122,7 @@ class FileReplace {
 	private static function scan_start( $o, $scopes, $php ) {
 		$roots = self::roots( $scopes );
 		if ( ! $roots ) {
-			return array( 'ok' => false, 'code' => 'bad', 'message' => __( 'Choose where to look: uploads, the theme or plugins.', 'wpeasy-hub-connector' ) );
+			return array( 'ok' => false, 'code' => 'bad', 'message' => __( 'Choose where to look: uploads, the theme, all themes, plugins, must-use plugins or other wp-content folders.', 'wpeasy-hub-connector' ) );
 		}
 		self::forget_old();
 		$ext   = self::EXT;

@@ -66,7 +66,7 @@ class RestoreState {
 	}
 
 	/** Puts the pairing back, ends the notice and clears caches. */
-	public static function finish() {
+	public static function finish( $permalinks = false ) {
 		$s    = self::state();
 		$kept = ( $s && isset( $s['store'] ) && is_array( $s['store'] ) ) ? $s['store'] : null;
 		if ( is_array( $kept ) && ! empty( $kept['secret'] ) ) {
@@ -77,7 +77,35 @@ class RestoreState {
 			@unlink( $f ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
 		}
 		wp_cache_flush();
-		return array( 'ok' => true, 'settings_kept' => is_array( $kept ) );
+		$res = array( 'ok' => true, 'settings_kept' => is_array( $kept ) );
+		if ( $permalinks ) {
+			$res['permalinks'] = self::flush_permalinks();
+		}
+		return $res;
+	}
+
+	/**
+	 * After a website has been moved: makes WordPress rebuild its pretty-address rules for where it now lives, and write them to .htaccess where the server uses one (WordPress only writes that file from
+	 * its admin side, so the pieces it needs are loaded here). Never an error: a server that does not use .htaccess, or a folder that cannot be written to, simply gives htaccess false.
+	 *
+	 * @return array{flushed: bool, htaccess: bool}
+	 */
+	public static function flush_permalinks() {
+		if ( ! function_exists( 'flush_rewrite_rules' ) ) {
+			return array( 'flushed' => false, 'htaccess' => false );
+		}
+		foreach ( array( 'wp-admin/includes/misc.php', 'wp-admin/includes/file.php' ) as $inc ) {
+			if ( defined( 'ABSPATH' ) && is_file( ABSPATH . $inc ) ) {
+				require_once ABSPATH . $inc;
+			}
+		}
+		try {
+			flush_rewrite_rules( true );
+		} catch ( \Throwable $e ) {
+			return array( 'flushed' => false, 'htaccess' => false );
+		}
+		$home = function_exists( 'get_home_path' ) ? get_home_path() : ( defined( 'ABSPATH' ) ? ABSPATH : '' );
+		return array( 'flushed' => true, 'htaccess' => '' !== $home && is_file( $home . '.htaccess' ) );
 	}
 
 	/**
