@@ -51,9 +51,16 @@ class Shield {
 		return isset( $p['mode'], $p['html'] ) && is_string( $p['mode'] ) && isset( self::MODES[ $p['mode'] ] ) && is_string( $p['html'] ) && '' !== $p['html'] && strlen( $p['html'] ) <= self::MAX_PAGE;
 	}
 
-	/** The Hub sets everything at once: {enabled, message, template: {mode, html} or null, links: [{id, hash, expires}]}. */
+	/**
+	 * The Hub sets everything at once: {enabled, message, template: {mode, html} or null, links: [{id, hash, expires}]}. It may also just ask what the website holds ("status", changes nothing):
+	 * some hosts replace a 503 with their own error page, and this is how the Hub learns that the error is the maintenance shield.
+	 */
 	public static function handle( $action, $data ) {
-		if ( 'set' !== ( isset( $data['op'] ) ? $data['op'] : '' ) ) {
+		$op = isset( $data['op'] ) ? $data['op'] : '';
+		if ( 'status' === $op ) {
+			return array( 'ok' => true, 'shield' => self::status() );
+		}
+		if ( 'set' !== $op ) {
 			return array( 'ok' => false, 'code' => 'unknown', 'message' => 'Unknown request.' );
 		}
 		$links = array();

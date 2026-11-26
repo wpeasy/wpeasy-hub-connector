@@ -38,4 +38,8 @@ foreach ( array( array( 'mode' => 'other', 'html' => '<p>x</p>' ), array( 'mode'
 	Shield::handle( 'shield', array( 'op' => 'set', 'enabled' => true, 'links' => array(), 'template' => $bad ) );
 	if ( null !== Shield::page() || '' !== Shield::status()['page'] ) { $fail( 'a page that is not sound, or none, should clear the chosen one' ); }
 }
+Shield::handle( 'shield', array( 'op' => 'set', 'enabled' => true, 'links' => array(), 'template' => array( 'mode' => 'maintenance', 'html' => '<p>x</p>' ) ) );
+$before = $GLOBALS['options'];
+$asked = Shield::handle( 'shield', array( 'op' => 'status' ) );
+if ( empty( $asked['ok'] ) || empty( $asked['shield']['enabled'] ) || md5( "maintenance\n<p>x</p>" ) !== $asked['shield']['page'] || $before !== $GLOBALS['options'] ) { $fail( 'asking the state should answer it and change nothing' ); }
 echo "OK shield-page-test\n";
