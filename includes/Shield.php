@@ -4,14 +4,18 @@ namespace WPEasy\HubConnector;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shield mode: while the Hub has it switched on, a visitor with no preview link sees a plain "in development" page (HTTP 403, kept out of search engines) instead of the website.
- * The Hub sends the settings: on or off, the message, and a list of preview links as fingerprints (never the links themselves). A visitor who opens a preview link gets a cookie that
+ * Shield mode: while the Hub has it switched on, a visitor with no preview link sees a page instead of the website: the one chosen in the Hub ("coming soon", an ordinary page, or "under
+ * maintenance", HTTP 503 with Retry-After), else a plain "in development" page (HTTP 403). All are kept out of search engines and carry an X-WPEasy-Shield header, so the Hub's uptime check knows
+ * the answer is deliberate. The Hub sends the settings: on or off, the message, the chosen page, and a list of preview links as fingerprints (never the links themselves). A visitor who opens a preview link gets a cookie that
  * lasts until the link expires or is revoked. People signed in to WordPress, the sign-in page, cron, the Hub's own signed requests and the one-click login are never stopped.
  */
 class Shield {
 	const OPTION  = 'wpeasy_hub_shield';
 	const COOKIE  = 'wpeasy_preview';
 	const PARAM   = 'wpeasy_preview';
+	/** The chosen page: kept apart from the settings, and read only when a visitor is stopped (it can be large). */
+	const PAGE     = 'wpeasy_hub_shield_page';
+	const MAX_PAGE = 400000; // bytes
 	const ACTIONS = array( 'shield' );
 
 	public static function init() {
@@ -31,10 +35,21 @@ class Shield {
 	/** What the report tells the Hub, so it can notice if the website's settings drifted from what it set. */
 	public static function status() {
 		$c = self::config();
-		return array( 'enabled' => ! empty( $c['enabled'] ), 'links' => isset( $c['links'] ) ? count( (array) $c['links'] ) : 0 );
+		$page = self::page();
+		return array( 'enabled' => ! empty( $c['enabled'] ), 'links' => isset( $c['links'] ) ? count( (array) $c['links'] ) : 0, 'page' => $page ? md5( $page['mode'] . "\n" . $page['html'] ) : '' );
 	}
 
-	/** The Hub sets everything at once: {enabled, message, links: [{id, hash, expires}]}. */
+	/** The chosen page, or null when none is chosen. @return array{mode: string, html: string}|null */
+	public static function page() {
+		$p = get_option( self::PAGE, null );
+		return is_array( $p ) && self::page_ok( $p ) ? array( 'mode' => $p['mode'], 'html' => $p['html'] ) : null;
+	}
+
+	private static function page_ok( $p ) {
+		return isset( $p['mode'], $p['html'] ) && in_array( $p['mode'], array( 'coming_soon', 'maintenance' ), true ) && is_string( $p['html'] ) && '' !== $p['html'] && strlen( $p['html'] ) <= self::MAX_PAGE;
+	}
+
+	/** The Hub sets everything at once: {enabled, message, template: {mode, html} or null, links: [{id, hash, expires}]}. */
 	public static function handle( $action, $data ) {
 		if ( 'set' !== ( isset( $data['op'] ) ? $data['op'] : '' ) ) {
 			return array( 'ok' => false, 'code' => 'unknown', 'message' => 'Unknown request.' );
@@ -47,6 +62,11 @@ class Shield {
 		}
 		$msg = isset( $data['message'] ) ? trim( wp_strip_all_tags( (string) $data['message'] ) ) : '';
 		update_option( self::OPTION, array( 'enabled' => ! empty( $data['enabled'] ), 'message' => substr( $msg, 0, 600 ), 'links' => $links, 'set' => time() ), true ); // autoloaded: it is read on every request
+		if ( isset( $data['template'] ) && is_array( $data['template'] ) && self::page_ok( $data['template'] ) ) {
+			update_option( self::PAGE, array( 'mode' => $data['template']['mode'], 'html' => $data['template']['html'] ), false ); // written in the Hub by an administrator, arrived in a signed request
+		} else {
+			delete_option( self::PAGE );
+		}
 		return array( 'ok' => true, 'shield' => self::status() );
 	}
 
@@ -113,18 +133,41 @@ class Shield {
 		self::block();
 	}
 
+	/**
+	 * What a stopped visitor is answered with.
+	 *
+	 * @param array{mode: string, html: string}|null $page The page chosen in the Hub, or null for the built-in one.
+	 * @return array{status: int, headers: array<int, string>, body: string}
+	 */
+	public static function answer( $page, $message, $name ) {
+		$headers = array( 'X-Robots-Tag: noindex, nofollow, noarchive', 'Content-Type: text/html; charset=utf-8', 'X-WPEasy-Shield: ' . ( $page ? $page['mode'] : 'default' ) );
+		if ( $page ) {
+			if ( 'maintenance' === $page['mode'] ) {
+				$headers[] = 'Retry-After: 3600';
+			}
+			return array( 'status' => 'maintenance' === $page['mode'] ? 503 : 200, 'headers' => $headers, 'body' => str_replace( '{{site_name}}', esc_html( $name ), $page['html'] ) );
+		}
+		$msg  = '' !== (string) $message ? $message : __( 'This website is in development. You need a preview link from the developer to view it.', 'wpeasy-hub-connector' );
+		$name = esc_html( $name );
+		return array(
+			'status'  => 403,
+			'headers' => $headers,
+			'body'    => '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>' . esc_html__( 'In development', 'wpeasy-hub-connector' ) . ( $name ? ' · ' . $name : '' ) . '</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#141414;color:#f4f4f4;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .75rem;color:#ffd64f}p{margin:0;color:#d6d6d6}</style></head><body><main><h1>' . esc_html__( 'In development', 'wpeasy-hub-connector' ) . '</h1><p>' . esc_html( $msg ) . '</p></main></body></html>',
+		);
+	}
+
 	private static function block() {
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
 			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- the name page caches look for
 		}
+		$c      = self::config();
+		$answer = self::answer( self::page(), isset( $c['message'] ) ? $c['message'] : '', get_bloginfo( 'name' ) );
 		nocache_headers();
-		status_header( 403 );
-		header( 'X-Robots-Tag: noindex, nofollow, noarchive' );
-		header( 'Content-Type: text/html; charset=utf-8' );
-		$c   = self::config();
-		$msg = ! empty( $c['message'] ) ? $c['message'] : __( 'This website is in development. You need a preview link from the developer to view it.', 'wpeasy-hub-connector' );
-		$name = esc_html( get_bloginfo( 'name' ) );
-		echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>' . esc_html__( 'In development', 'wpeasy-hub-connector' ) . ( $name ? ' · ' . $name : '' ) . '</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#141414;color:#f4f4f4;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .75rem;color:#ffd64f}p{margin:0;color:#d6d6d6}</style></head><body><main><h1>' . esc_html__( 'In development', 'wpeasy-hub-connector' ) . '</h1><p>' . esc_html( $msg ) . '</p></main></body></html>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every dynamic part is escaped above
+		status_header( $answer['status'] );
+		foreach ( $answer['headers'] as $h ) {
+			header( $h );
+		}
+		echo $answer['body']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the built-in page escapes every dynamic part; a chosen page is the agency's own HTML from a signed request, with the name escaped
 		exit;
 	}
 }
