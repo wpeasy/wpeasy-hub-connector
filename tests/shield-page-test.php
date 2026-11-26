@@ -27,6 +27,11 @@ if ( preg_grep( '/^Retry-After/', $soon['headers'] ) ) { $fail( 'coming soon sho
 $busy = Shield::answer( array( 'mode' => 'maintenance', 'html' => '<p>Back soon</p>' ), '', 'Acme' );
 if ( 503 !== $busy['status'] || ! $has( $busy, 'Retry-After: 3600' ) || ! $has( $busy, 'X-WPEasy-Shield: maintenance' ) ) { $fail( 'maintenance answers wrongly' ); }
 
+$dev = Shield::answer( array( 'mode' => 'development', 'html' => '<h1>{{site_name}}</h1><p>{{message}}</p>' ), 'Ask {{site_name}} <b>', 'Acme' );
+if ( 403 !== $dev['status'] || ! $has( $dev, 'X-WPEasy-Shield: development' ) || preg_grep( '/^Retry-After/', $dev['headers'] ) ) { $fail( 'under development answers wrongly' ); }
+if ( '<h1>Acme</h1><p>Ask {{site_name}} &lt;b&gt;</p>' !== $dev['body'] ) { $fail( 'the message was not put in safely' ); }
+if ( false === strpos( Shield::answer( array( 'mode' => 'development', 'html' => '{{message}}' ), '', 'Acme' )['body'], 'preview link' ) ) { $fail( 'with no message the usual sentence should show' ); }
+
 Shield::handle( 'shield', array( 'op' => 'set', 'enabled' => true, 'links' => array(), 'template' => array( 'mode' => 'maintenance', 'html' => '<p>x</p>' ) ) );
 if ( array( 'mode' => 'maintenance', 'html' => '<p>x</p>' ) !== Shield::page() || md5( "maintenance\n<p>x</p>" ) !== Shield::status()['page'] ) { $fail( 'the chosen page was not kept' ); }
 foreach ( array( array( 'mode' => 'other', 'html' => '<p>x</p>' ), array( 'mode' => 'maintenance', 'html' => '' ), array( 'mode' => 'maintenance', 'html' => str_repeat( 'x', 400001 ) ), null ) as $bad ) {

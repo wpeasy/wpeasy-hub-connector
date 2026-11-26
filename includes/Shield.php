@@ -4,8 +4,8 @@ namespace WPEasy\HubConnector;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shield mode: while the Hub has it switched on, a visitor with no preview link sees a page instead of the website: the one chosen in the Hub ("coming soon", an ordinary page, or "under
- * maintenance", HTTP 503 with Retry-After), else a plain "in development" page (HTTP 403). All are kept out of search engines and carry an X-WPEasy-Shield header, so the Hub's uptime check knows
+ * Shield mode: while the Hub has it switched on, a visitor with no preview link sees a page instead of the website: the one chosen in the Hub ("under development", HTTP 403; "coming soon", an
+ * ordinary page; or "under maintenance", HTTP 503 with Retry-After), else a plain "in development" page (HTTP 403). All are kept out of search engines and carry an X-WPEasy-Shield header, so the Hub's uptime check knows
  * the answer is deliberate. The Hub sends the settings: on or off, the message, the chosen page, and a list of preview links as fingerprints (never the links themselves). A visitor who opens a preview link gets a cookie that
  * lasts until the link expires or is revoked. People signed in to WordPress, the sign-in page, cron, the Hub's own signed requests and the one-click login are never stopped.
  */
@@ -16,6 +16,8 @@ class Shield {
 	/** The chosen page: kept apart from the settings, and read only when a visitor is stopped (it can be large). */
 	const PAGE     = 'wpeasy_hub_shield_page';
 	const MAX_PAGE = 400000; // bytes
+	/** The kinds of page the Hub offers => what a visitor's browser is answered with. */
+	const MODES = array( 'development' => 403, 'coming_soon' => 200, 'maintenance' => 503 );
 	const ACTIONS = array( 'shield' );
 
 	public static function init() {
@@ -46,7 +48,7 @@ class Shield {
 	}
 
 	private static function page_ok( $p ) {
-		return isset( $p['mode'], $p['html'] ) && in_array( $p['mode'], array( 'coming_soon', 'maintenance' ), true ) && is_string( $p['html'] ) && '' !== $p['html'] && strlen( $p['html'] ) <= self::MAX_PAGE;
+		return isset( $p['mode'], $p['html'] ) && is_string( $p['mode'] ) && isset( self::MODES[ $p['mode'] ] ) && is_string( $p['html'] ) && '' !== $p['html'] && strlen( $p['html'] ) <= self::MAX_PAGE;
 	}
 
 	/** The Hub sets everything at once: {enabled, message, template: {mode, html} or null, links: [{id, hash, expires}]}. */
@@ -141,13 +143,14 @@ class Shield {
 	 */
 	public static function answer( $page, $message, $name ) {
 		$headers = array( 'X-Robots-Tag: noindex, nofollow, noarchive', 'Content-Type: text/html; charset=utf-8', 'X-WPEasy-Shield: ' . ( $page ? $page['mode'] : 'default' ) );
+		$msg = '' !== (string) $message ? $message : __( 'This website is in development. You need a preview link from the developer to view it.', 'wpeasy-hub-connector' );
 		if ( $page ) {
 			if ( 'maintenance' === $page['mode'] ) {
 				$headers[] = 'Retry-After: 3600';
 			}
-			return array( 'status' => 'maintenance' === $page['mode'] ? 503 : 200, 'headers' => $headers, 'body' => str_replace( '{{site_name}}', esc_html( $name ), $page['html'] ) );
+			// One pass, so a name or message that itself looks like a placeholder is left as typed.
+			return array( 'status' => self::MODES[ $page['mode'] ], 'headers' => $headers, 'body' => strtr( $page['html'], array( '{{site_name}}' => esc_html( $name ), '{{message}}' => esc_html( $msg ) ) ) );
 		}
-		$msg  = '' !== (string) $message ? $message : __( 'This website is in development. You need a preview link from the developer to view it.', 'wpeasy-hub-connector' );
 		$name = esc_html( $name );
 		return array(
 			'status'  => 403,

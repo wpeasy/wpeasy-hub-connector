@@ -20,7 +20,7 @@ Every report is signed with a secret agreed at pairing, so the Hub can tell it r
 == Changelog ==
 
 = 0.15.0 =
-* Shield: can show a page chosen in the Hub, either "coming soon" or "under maintenance", and tells the Hub's uptime check that the answer is deliberate.
+* Shield: can show a page chosen in the Hub ("under development", "coming soon" or "under maintenance"), and tells the Hub's uptime check that the answer is deliberate.
 
 = 0.14.0 =
 * Moving a website: the search and replace inside files can now also look in every installed theme, in must-use plugins and in other folders inside wp-content, so the old address is changed wherever it is found.
