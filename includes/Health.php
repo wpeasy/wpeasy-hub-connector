@@ -30,7 +30,10 @@ class Health {
 	}
 
 	private static function fetch( $url ) {
-		$res = wp_remote_get( add_query_arg( 'wpeasy_hub_health', wp_generate_password( 8, false ), $url ), array(
+		// A fresh value each time, so no cache can answer. On a paired website it is also the pass that lets this request through a shield: the real pages are what must be checked.
+		$secret = (string) Store::get( 'secret' );
+		$value  = '' !== $secret ? Shield::health_pass( $secret, time() ) : wp_generate_password( 8, false );
+		$res    = wp_remote_get( add_query_arg( Shield::HEALTH, $value, $url ), array(
 			'timeout'     => 30,
 			'redirection' => 5,
 			'sslverify'   => apply_filters( 'https_local_ssl_verify', false ),

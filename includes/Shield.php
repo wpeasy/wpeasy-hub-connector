@@ -4,10 +4,11 @@ namespace WPEasy\HubConnector;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shield mode: while the Hub has it switched on, a visitor with no preview link sees a page instead of the website: the one chosen in the Hub ("under development", HTTP 403; "coming soon", an
- * ordinary page; or "under maintenance", HTTP 503 with Retry-After), else a plain "in development" page (HTTP 403). All are kept out of search engines and carry an X-WPEasy-Shield header, so the Hub's uptime check knows
- * the answer is deliberate. The Hub sends the settings: on or off, the message, the chosen page, and a list of preview links as fingerprints (never the links themselves). A visitor who opens a preview link gets a cookie that
- * lasts until the link expires or is revoked. People signed in to WordPress, the sign-in page, cron, the Hub's own signed requests and the one-click login are never stopped.
+ * Shield mode: while the Hub has it switched on, a visitor with no preview link sees a page instead of the website: the one chosen in the Hub ("under development" or "coming soon", ordinary pages,
+ * HTTP 200; or "under maintenance", HTTP 503 with Retry-After), else a plain "in development" page (HTTP 200). All are kept out of search engines and carry an X-WPEasy-Shield header, so the Hub knows
+ * the page is the shield's and not the website. The Hub sends the settings: on or off, the message, the chosen page, and a list of preview links as fingerprints (never the links themselves). A visitor who opens a preview link gets a cookie that
+ * lasts until the link expires or is revoked. People signed in to WordPress, the sign-in page, cron, the Hub's own signed requests and the one-click login are never stopped, and neither is the
+ * plugin's own check after an update (a short-lived signed pass), which has to see the real website.
  */
 class Shield {
 	const OPTION  = 'wpeasy_hub_shield';
@@ -17,8 +18,11 @@ class Shield {
 	const PAGE     = 'wpeasy_hub_shield_page';
 	const MAX_PAGE = 400000; // bytes
 	/** The kinds of page the Hub offers => what a visitor's browser is answered with. */
-	const MODES = array( 'development' => 403, 'coming_soon' => 200, 'maintenance' => 503 );
+	const MODES = array( 'development' => 200, 'coming_soon' => 200, 'maintenance' => 503 );
 	const ACTIONS = array( 'shield' );
+	/** The address argument carrying the after-update check's pass, and how long (seconds) a pass is good for. */
+	const HEALTH       = 'wpeasy_hub_health';
+	const HEALTH_LASTS = 300;
 
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'guard' ), 2 ); // after the Hub's own signed requests (priority 1) have been answered
@@ -106,6 +110,18 @@ class Shield {
 		return null;
 	}
 
+	/** A pass for the plugin's own check of the website: signed with the pairing secret, good for a few minutes. */
+	public static function health_pass( $secret, $now ) {
+		return (int) $now . '.' . hash_hmac( 'sha256', 'health-v1.' . (int) $now, (string) $secret );
+	}
+
+	public static function health_pass_ok( $value, $secret, $now ) {
+		if ( '' === (string) $secret || ! preg_match( '/^([1-9]\d{0,11})\.[a-f0-9]{64}$/', (string) $value, $m ) ) {
+			return false;
+		}
+		return abs( (int) $now - (int) $m[1] ) <= self::HEALTH_LASTS && hash_equals( self::health_pass( $secret, $m[1] ), (string) $value );
+	}
+
 	/** A cookie made when a preview link was opened: it names the link, so revoking or expiring the link ends it. */
 	private static function cookie_ok() {
 		$v = isset( $_COOKIE[ self::COOKIE ] ) ? (string) wp_unslash( $_COOKIE[ self::COOKIE ] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- checked below
@@ -139,6 +155,12 @@ class Shield {
 		if ( self::cookie_ok() ) {
 			return;
 		}
+		// The after-update check sees the real website. That answer must never be stored by a cache, or visitors would be handed the website behind the shield.
+		$pass = isset( $_GET[ self::HEALTH ] ) && is_string( $_GET[ self::HEALTH ] ) ? $_GET[ self::HEALTH ] : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput -- verified as a signature
+		if ( '' !== $pass && self::health_pass_ok( $pass, Store::get( 'secret' ), time() ) ) {
+			self::never_cache();
+			return;
+		}
 		self::block();
 	}
 
@@ -160,19 +182,24 @@ class Shield {
 		}
 		$name = esc_html( $name );
 		return array(
-			'status'  => 403,
+			'status'  => 200,
 			'headers' => $headers,
 			'body'    => '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>' . esc_html__( 'In development', 'wpeasy-hub-connector' ) . ( $name ? ' · ' . $name : '' ) . '</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#141414;color:#f4f4f4;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .75rem;color:#ffd64f}p{margin:0;color:#d6d6d6}</style></head><body><main><h1>' . esc_html__( 'In development', 'wpeasy-hub-connector' ) . '</h1><p>' . esc_html( $msg ) . '</p></main></body></html>',
 		);
 	}
 
-	private static function block() {
+	private static function never_cache() {
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
 			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- the name page caches look for
 		}
+		do_action( 'litespeed_control_set_nocache', 'WP Easy Hub shield' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- LiteSpeed Cache's own hook
+		nocache_headers();
+	}
+
+	private static function block() {
+		self::never_cache();
 		$c      = self::config();
 		$answer = self::answer( self::page(), isset( $c['message'] ) ? $c['message'] : '', get_bloginfo( 'name' ) );
-		nocache_headers();
 		status_header( $answer['status'] );
 		foreach ( $answer['headers'] as $h ) {
 			header( $h );

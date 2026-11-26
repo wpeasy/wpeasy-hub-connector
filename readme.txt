@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.15.0
+Stable tag: 0.15.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,10 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.15.1 =
+* Shield: the "under development" page (and the plain one) now answers 200, like "coming soon", instead of 403 "access denied". "Under maintenance" still answers 503.
+* The check made after an update now gets through the shield (with a short-lived signed pass), so it looks at the real website. Before, an update on a website showing the "under maintenance" page was always put back, and a fault hidden behind any shield could go unnoticed.
 
 = 0.15.0 =
 * Shield: can show a page chosen in the Hub ("under development", "coming soon" or "under maintenance"), and tells the Hub's uptime check that the answer is deliberate. The Hub can also ask what the shield holds, for hosts that replace the maintenance page with an error page of their own.
