@@ -92,6 +92,8 @@ class Settings {
 				echo '<p>' . esc_html__( 'Last report:', 'wpeasy-hub-connector' ) . ' ' . esc_html( $when ) . ' &mdash; ' . ( ! empty( $last['ok'] ) ? esc_html__( 'sent', 'wpeasy-hub-connector' ) : esc_html__( 'failed:', 'wpeasy-hub-connector' ) . ' ' . esc_html( $last['message'] ) ) . '</p>';
 			}
 			echo '<p>' . esc_html__( 'This website reports its WordPress and PHP versions and any updates waiting, once a day. Nothing else is sent.', 'wpeasy-hub-connector' ) . '</p>';
+			echo '<h2>' . esc_html__( 'Automatic updates', 'wpeasy-hub-connector' ) . '</h2>';
+			echo '<p>' . ( AutoUpdates::held() ? esc_html__( 'Switched off by your Hub: updates are installed on its schedule. You can still update by hand.', 'wpeasy-hub-connector' ) : esc_html__( 'Left to WordPress and your own settings. Your Hub can switch them off and install updates on its schedule.', 'wpeasy-hub-connector' ) ) . '</p>';
 			echo '<h2>' . esc_html__( 'One-click login', 'wpeasy-hub-connector' ) . '</h2>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="wpeasy_hub_options">';
 			wp_nonce_field( 'wpeasy_hub_options' );

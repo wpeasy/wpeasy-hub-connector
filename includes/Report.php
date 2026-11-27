@@ -102,6 +102,7 @@ class Report {
 			'admins'         => array_values( $admins ),
 			'user_roles'     => $user_roles,
 			'shield'         => Shield::status(),
+			'auto_updates_held' => AutoUpdates::held(),
 			'backups'        => Backup::stats(), // keyed by ID above: a user whose role is stored twice in the database comes back twice
 			'login_allowed'  => (bool) Store::get( 'allow_login', true ),
 			'backup_allowed' => (bool) Store::get( 'allow_backup', true ),

@@ -54,8 +54,8 @@ class Client {
 		return array( 'ok' => true, 'message' => __( 'Connected. This website will now report to the Hub once a day.', 'wpeasy-hub-connector' ) );
 	}
 
-	/** Sends the report (the daily schedule, or the button). @return array{ok: bool, message: string} */
-	public static function send_report( $refresh = false ) {
+	/** Sends the report (the daily schedule, or the button). The Hub's answer says whether to hold WordPress's own automatic updates (see AutoUpdates). @return array{ok: bool, message: string} */
+	public static function send_report( $refresh = false, $again = true ) {
 		if ( ! Store::connected() ) {
 			return array( 'ok' => false, 'message' => __( 'Not connected.', 'wpeasy-hub-connector' ) );
 		}
@@ -74,6 +74,11 @@ class Client {
 		Store::set( array( 'last_report' => array( 'time' => time(), 'ok' => $res['ok'], 'message' => $res['ok'] ? '' : $res['message'] ) ) );
 		if ( $res['ok'] ) {
 			Store::set( array( 'reported_version' => VERSION ) ); // so an update is noticed: the next page load after it sends a report straight away
+			if ( isset( $res['data']['hold_auto_updates'] ) && AutoUpdates::apply( true === $res['data']['hold_auto_updates'] ) && $again ) {
+				return self::send_report( false, false ); // the hold has just started or ended: tell the Hub how things stand now (once)
+			}
+		} elseif ( ! empty( $res['refused'] ) ) {
+			AutoUpdates::release(); // the Hub itself does not accept this website any more (disconnected there): let WordPress update itself again
 		}
 		return $res['ok'] ? array( 'ok' => true, 'message' => __( 'The report was sent.', 'wpeasy-hub-connector' ) ) : $res;
 	}
@@ -150,7 +155,7 @@ class Client {
 			if ( ! is_array( $data ) || empty( $data['message'] ) ) {
 				return array( 'ok' => false, 'message' => __( 'Something in front of the Hub (such as a firewall) refused this website before the Hub could read the request. Ask whoever runs the Hub to allow requests to /api/connector/ from this website.', 'wpeasy-hub-connector' ) );
 			}
-			return array( 'ok' => false, 'message' => __( 'The Hub did not accept that. Check the code is current and was made for this website.', 'wpeasy-hub-connector' ) );
+			return array( 'ok' => false, 'refused' => true, 'message' => __( 'The Hub did not accept that. Check the code is current and was made for this website.', 'wpeasy-hub-connector' ) );
 		}
 		if ( 429 === $code ) {
 			return array( 'ok' => false, 'message' => __( 'The Hub says too many tries. Wait a minute and try again.', 'wpeasy-hub-connector' ) );

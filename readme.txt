@@ -4,7 +4,7 @@ Tags: management, updates, monitoring
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.15.1
+Stable tag: 0.16.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ After that the website reports, once a day, its WordPress and PHP versions, its 
 Every report is signed with a secret agreed at pairing, so the Hub can tell it really came from this website.
 
 == Changelog ==
+
+= 0.16.0 =
+* Automatic updates: when your Hub installs this website's updates on a schedule, it can switch WordPress's own automatic updates (WordPress, plugins and themes) off, so nothing updates at a time nobody chose. Updates are still found and reported, and can still be installed by hand. The hold ends by itself if the Hub is disconnected or has not confirmed it for three days, and when this plugin is switched off.
 
 = 0.15.1 =
 * Shield: the "under development" page (and the plain one) now answers 200, like "coming soon", instead of 403 "access denied". "Under maintenance" still answers 503.
