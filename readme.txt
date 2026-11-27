@@ -20,6 +20,7 @@ Every report is signed with a secret agreed at pairing, so the Hub can tell it r
 == Changelog ==
 
 = 0.16.0 =
+* Caches: the Hub can ask the website to empty its page caches after updates.
 * Automatic updates: when your Hub installs this website's updates on a schedule, it can switch WordPress's own automatic updates (WordPress, plugins and themes) off, so nothing updates at a time nobody chose. Updates are still found and reported, and can still be installed by hand. The hold ends by itself if the Hub is disconnected or has not confirmed it for three days, and when this plugin is switched off.
 
 = 0.15.1 =

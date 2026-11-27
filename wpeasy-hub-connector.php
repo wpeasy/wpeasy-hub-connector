@@ -26,6 +26,7 @@ require_once __DIR__ . '/includes/Store.php';
 require_once __DIR__ . '/includes/Client.php';
 require_once __DIR__ . '/includes/Report.php';
 require_once __DIR__ . '/includes/AutoUpdates.php';
+require_once __DIR__ . '/includes/CacheClear.php';
 require_once __DIR__ . '/includes/LoginToken.php';
 require_once __DIR__ . '/includes/Login.php';
 require_once __DIR__ . '/includes/Backup.php';

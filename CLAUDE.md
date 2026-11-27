@@ -19,6 +19,9 @@ WordPress plugin, a separate repo from the Hub app (`../wpeasy-hub-app`, `app/Co
 ## Holding automatic updates (0.16.0)
 `AutoUpdates`: WordPress's `auto_update_core|plugin|theme` and `allow_*_auto_core_updates` filters (last priority) answer no, and the core "please update" email is stopped, **only while** the pairing exists and the Hub confirmed the hold in a report reply (`hold_auto_updates`) within three days. No new inbound action: the Hub asks for a report and answers it. A refused report (the Hub's own 403) lifts it. Translations are left alone; update checks, manual updates and the Hub's own updates (`Runner`) are untouched. The report carries `auto_updates_held`. Test: `tests/auto-updates-test.php`. **Not released until the user says so.**
 
+## Clearing caches (0.16.0)
+Signed action `clear_cache` (`CacheClear`): object cache and the page caches of the common cache plugins and hosts, each only if present, failures ignored; changes nothing else. The Hub asks after updates, before picturing the home page. Test: `tests/cache-clear-test.php`.
+
 ## One-click login
 `includes/Login.php` + `includes/LoginToken.php`. Only a POST with a genuine, current, unused token signs anyone in; the user must still be an administrator; there is an off switch (`allow_login`, default on); failures are rate-limited by IP. "Works once" is an atomic `INSERT IGNORE` (`Login::claim_nonce`), never get-then-set (two simultaneous requests would both pass). Never accept the token in a GET address, never log it, never add another way to sign in. The report lists administrators by id, login and display name only (no emails).
 
